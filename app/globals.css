@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme tokens — dark mode flips these (html.dark), nothing else changes */
+:root {
+  --surface: 255 255 255;
+  --chalk: 247 248 250;
+  --mist: 238 240 244;
+  --ink: 27 27 36;
+  --ink-soft: 51 51 63;
+  --ink-muted: 107 107 122;
+  --ink-faint: 154 154 168;
+  --elevate: #05c3f9;
+}
+.dark {
+  --surface: 31 33 42;
+  --chalk: 20 21 27;
+  --mist: 48 51 63;
+  --ink: 235 236 242;
+  --ink-soft: 209 211 221;
+  --ink-muted: 150 154 170;
+  --ink-faint: 106 110 128;
+}
+
+body {
+  @apply bg-chalk text-ink font-body antialiased;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl bg-white shadow-card border border-mist/60;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+  .stat-tint-cyan {
+    background: linear-gradient(135deg, #eefbff 0%, #ffffff 70%);
+    border-color: #d8f5fe;
+  }
+  .stat-tint-green {
+    background: linear-gradient(135deg, #effdf4 0%, #ffffff 70%);
+    border-color: #d7f5e2;
+  }
+  .stat-tint-amber {
+    background: linear-gradient(135deg, #fffaee 0%, #ffffff 70%);
+    border-color: #faeecb;
+  }
+  .stat-tint-slate {
+    background: linear-gradient(135deg, #f3f5f9 0%, #ffffff 70%);
+    border-color: #e6eaf1;
+  }
+  .dark .stat-tint-cyan {
+    background: linear-gradient(135deg, rgba(5, 195, 249, 0.09) 0%, rgb(var(--surface)) 70%);
+    border-color: rgba(5, 195, 249, 0.22);
+  }
+  .dark .stat-tint-green {
+    background: linear-gradient(135deg, rgba(52, 211, 153, 0.09) 0%, rgb(var(--surface)) 70%);
+    border-color: rgba(52, 211, 153, 0.22);
+  }
+  .dark .stat-tint-amber {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.09) 0%, rgb(var(--surface)) 70%);
+    border-color: rgba(251, 191, 36, 0.22);
+  }
+  .dark .stat-tint-slate {
+    background: linear-gradient(135deg, rgba(148, 163, 184, 0.09) 0%, rgb(var(--surface)) 70%);
+    border-color: rgb(var(--mist));
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold;
+  }
+  /* Soften the light badge palettes on dark backgrounds */
+  .dark .chip {
+    filter: saturate(0.85) brightness(0.92);
+  }
+}
+
+/* Subtle dotted texture for hero panels */
+.dot-grid {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.18) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Thin scrollbars for tables */
+.thin-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--mist));
+  border-radius: 8px;
+}
+
+/* ── Motion ─────────────────────────────────────────────────────── */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise {
+  animation: rise 0.28s ease-out both;
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton {
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    100deg,
+    rgb(var(--mist)) 40%,
+    rgb(var(--chalk)) 50%,
+    rgb(var(--mist)) 60%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes confetti-fall {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate3d(var(--cx), var(--cy), 0) rotate(var(--cr)); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise, .skeleton { animation: none; }
+}
