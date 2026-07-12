@@ -44,11 +44,10 @@ export default async function Topbar({
         )}
         {action}
         <SearchTrigger />
-        {/* Secondary controls hide on phones — everything is still reachable */}
         <Link
           href="/links"
           title="Quick links"
-          className="hidden rounded-lg border border-mist bg-white p-2 text-ink-muted transition hover:text-ink sm:block"
+          className="rounded-lg border border-mist bg-white p-2 text-ink-muted transition hover:text-ink"
         >
           <Link2 size={15} />
         </Link>
