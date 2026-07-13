@@ -1,4 +1,4 @@
-import { Deal, Lead, TaskItem, TeamMember, Settings, Sop, PnlEntry, Activity, DealNote, Funnel } from "../types";
+import { Deal, Lead, TaskItem, TeamMember, Settings, Sop, PnlEntry, Activity, DealNote, Funnel, FormSubmission } from "../types";
 
 export interface ImportPayload {
   deals: Partial<Deal>[];
@@ -52,6 +52,11 @@ export interface Repo {
   updateFunnel(id: number, d: Partial<Funnel>): Promise<void>;
   deleteFunnel(id: number): Promise<void>;
   bumpFunnel(id: number, stat: "views" | "submissions"): Promise<void>;
+
+  listSubmissions(funnelId?: number): Promise<FormSubmission[]>;
+  createSubmission(d: Omit<FormSubmission, "id">): Promise<FormSubmission>;
+  updateSubmission(id: number, d: Partial<FormSubmission>): Promise<void>;
+  deleteSubmission(id: number): Promise<void>;
 
   // Google Calendar OAuth (refresh tokens, keyed by member email)
   listCalendarConnections(): Promise<{ email: string; connectedAt: string }[]>;

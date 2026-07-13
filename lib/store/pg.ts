@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import { Deal, Lead, TaskItem, TeamMember, Settings, Sop, PnlEntry, DealNote, Funnel, DEFAULT_BROKERAGE, DEFAULT_CHECKLISTS, DEFAULT_MEASURABLES, DEFAULT_LINKS } from "../types";
+import { Deal, Lead, TaskItem, TeamMember, Settings, Sop, PnlEntry, DealNote, Funnel, FormSubmission, DEFAULT_BROKERAGE, DEFAULT_CHECKLISTS, DEFAULT_MEASURABLES, DEFAULT_LINKS } from "../types";
 import { SEED_SETTINGS, SEED_TEAM, SEED_SOPS } from "../seed";
 import type { Repo, ImportPayload } from "./repo";
 
@@ -135,6 +135,19 @@ async function init() {
         active boolean NOT NULL DEFAULT true,
         views int NOT NULL DEFAULT 0,
         submissions int NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )`;
+      await s`ALTER TABLE funnels ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'funnel'`;
+      await s`ALTER TABLE funnels ADD COLUMN IF NOT EXISTS thanks_note text NOT NULL DEFAULT ''`;
+      await s`CREATE TABLE IF NOT EXISTS form_submissions (
+        id serial PRIMARY KEY,
+        funnel_id int NOT NULL,
+        name text NOT NULL DEFAULT '',
+        email text NOT NULL DEFAULT '',
+        phone text NOT NULL DEFAULT '',
+        answers jsonb NOT NULL DEFAULT '[]',
+        lead_id int,
+        deal_id int,
         created_at timestamptz NOT NULL DEFAULT now()
       )`;
       await s`CREATE TABLE IF NOT EXISTS google_calendar_tokens (
@@ -502,6 +515,7 @@ export const pgRepo: Repo = {
     return rows.map((r) => ({
       id: r.id as number,
       slug: r.slug as string,
+      kind: ((r.kind as string) === "form" ? "form" : "funnel") as Funnel["kind"],
       name: r.name as string,
       template: r.template as Funnel["template"],
       headline: r.headline as string,
@@ -513,6 +527,7 @@ export const pgRepo: Repo = {
       resourceName: r.resource_name as string,
       resourceData: r.resource_data as string,
       calendlyUrl: r.calendly_url as string,
+      thanksNote: (r.thanks_note as string) ?? "",
       fields: (r.fields as Funnel["fields"]) ?? [],
       active: Boolean(r.active),
       views: r.views as number,
@@ -522,11 +537,11 @@ export const pgRepo: Repo = {
   async createFunnel(d) {
     await init();
     const [row] = await sql()`INSERT INTO funnels
-      (slug, name, template, headline, subhead, bullets, testimonial, cta_label,
-       resource_url, resource_name, resource_data, calendly_url, fields, active, views, submissions)
-      VALUES (${d.slug}, ${d.name}, ${d.template}, ${d.headline}, ${d.subhead},
+      (slug, kind, name, template, headline, subhead, bullets, testimonial, cta_label,
+       resource_url, resource_name, resource_data, calendly_url, thanks_note, fields, active, views, submissions)
+      VALUES (${d.slug}, ${d.kind ?? "funnel"}, ${d.name}, ${d.template}, ${d.headline}, ${d.subhead},
        ${sql().json(d.bullets as never)}, ${d.testimonial}, ${d.ctaLabel},
-       ${d.resourceUrl}, ${d.resourceName}, ${d.resourceData}, ${d.calendlyUrl},
+       ${d.resourceUrl}, ${d.resourceName}, ${d.resourceData}, ${d.calendlyUrl}, ${d.thanksNote ?? ""},
        ${sql().json(d.fields as never)}, ${d.active}, ${d.views ?? 0}, ${d.submissions ?? 0})
       RETURNING id`;
     return { ...d, id: row.id as number };
@@ -537,11 +552,11 @@ export const pgRepo: Repo = {
     const cur = all.find((f) => f.id === id);
     if (!cur) return;
     const v = { ...cur, ...d };
-    await sql()`UPDATE funnels SET slug=${v.slug}, name=${v.name}, template=${v.template},
+    await sql()`UPDATE funnels SET slug=${v.slug}, kind=${v.kind ?? "funnel"}, name=${v.name}, template=${v.template},
       headline=${v.headline}, subhead=${v.subhead}, bullets=${sql().json(v.bullets as never)},
       testimonial=${v.testimonial}, cta_label=${v.ctaLabel}, resource_url=${v.resourceUrl},
       resource_name=${v.resourceName}, resource_data=${v.resourceData},
-      calendly_url=${v.calendlyUrl}, fields=${sql().json(v.fields as never)},
+      calendly_url=${v.calendlyUrl}, thanks_note=${v.thanksNote ?? ""}, fields=${sql().json(v.fields as never)},
       active=${v.active} WHERE id=${id}`;
   },
   async deleteFunnel(id) {
@@ -552,6 +567,44 @@ export const pgRepo: Repo = {
     await init();
     if (stat === "views") await sql()`UPDATE funnels SET views = views + 1 WHERE id=${id}`;
     else await sql()`UPDATE funnels SET submissions = submissions + 1 WHERE id=${id}`;
+  },
+
+  async listSubmissions(funnelId) {
+    await init();
+    const rows =
+      funnelId == null
+        ? await sql()`SELECT * FROM form_submissions ORDER BY created_at DESC, id DESC`
+        : await sql()`SELECT * FROM form_submissions WHERE funnel_id=${funnelId} ORDER BY created_at DESC, id DESC`;
+    return rows.map((r) => ({
+      id: r.id as number,
+      funnelId: r.funnel_id as number,
+      name: r.name as string,
+      email: r.email as string,
+      phone: r.phone as string,
+      answers: (r.answers as FormSubmission["answers"]) ?? [],
+      leadId: (r.lead_id as number) ?? null,
+      dealId: (r.deal_id as number) ?? null,
+      createdAt: (r.created_at as Date).toISOString(),
+    })) as FormSubmission[];
+  },
+  async createSubmission(d) {
+    await init();
+    const [row] = await sql()`INSERT INTO form_submissions (funnel_id, name, email, phone, answers, lead_id, deal_id)
+      VALUES (${d.funnelId}, ${d.name}, ${d.email}, ${d.phone}, ${sql().json(d.answers as never)},
+       ${d.leadId ?? null}, ${d.dealId ?? null}) RETURNING id, created_at`;
+    return { ...d, id: row.id as number, createdAt: (row.created_at as Date).toISOString() };
+  },
+  async updateSubmission(id, d) {
+    await init();
+    const rows = await sql()`SELECT lead_id, deal_id FROM form_submissions WHERE id=${id}`;
+    if (rows.length === 0) return;
+    const leadId = d.leadId !== undefined ? d.leadId : ((rows[0].lead_id as number) ?? null);
+    const dealId = d.dealId !== undefined ? d.dealId : ((rows[0].deal_id as number) ?? null);
+    await sql()`UPDATE form_submissions SET lead_id=${leadId}, deal_id=${dealId} WHERE id=${id}`;
+  },
+  async deleteSubmission(id) {
+    await init();
+    await sql()`DELETE FROM form_submissions WHERE id=${id}`;
   },
 
   async listCalendarConnections() {

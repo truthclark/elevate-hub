@@ -46,7 +46,8 @@ export default async function FunnelPage({
     // fire-and-forget view count (form submits don't double-count)
     store.bumpFunnel(funnel.id, "views").catch(() => {});
   }
-  const hasResource = Boolean(funnel.resourceData || funnel.resourceUrl);
+  const isForm = funnel.kind === "form";
+  const hasResource = !isForm && Boolean(funnel.resourceData || funnel.resourceUrl);
   const downloadHref = funnel.resourceData ? `/f/${funnel.slug}/resource` : funnel.resourceUrl;
 
   return (
@@ -80,7 +81,9 @@ export default async function FunnelPage({
           )}
           {thanks && (
             <h1 className="mt-8 font-display text-3xl font-bold leading-tight">
-              You&apos;re all set{funnel.template === "magnet" ? " — it's on the way" : ""}.
+              {isForm
+                ? "Got it — thank you!"
+                : `You're all set${funnel.template === "magnet" ? " — it's on the way" : ""}.`}
             </h1>
           )}
         </div>
@@ -90,7 +93,15 @@ export default async function FunnelPage({
         {thanks ? (
           /* ── Thank-you: instant download + book a call ── */
           <div className="space-y-4">
-            {funnel.template === "magnet" && hasResource && (
+            {isForm && (
+              <div className="card p-6 text-center">
+                <p className="text-sm text-ink-muted">
+                  {funnel.thanksNote ||
+                    "Your answers are in. We'll review them before we talk so we don't waste a minute of your time."}
+                </p>
+              </div>
+            )}
+            {!isForm && funnel.template === "magnet" && hasResource && (
               <div className="card p-6 text-center">
                 <p className="text-sm text-ink-muted">
                   Check your email — and grab it right now if you can&apos;t wait:
@@ -156,16 +167,34 @@ export default async function FunnelPage({
               </label>
               {funnel.fields.map((f) => (
                 <label key={f.key} className="block">
-                  <span className="mb-1 block text-xs font-semibold text-ink-muted">{f.label}</span>
+                  <span className="mb-1 block text-xs font-semibold text-ink-muted">
+                    {f.label}
+                    {f.required && <span className="text-rose-500"> *</span>}
+                  </span>
                   {f.type === "select" ? (
-                    <select name={f.key} className="w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none">
+                    <select
+                      name={f.key}
+                      required={f.required}
+                      className="w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none"
+                    >
                       <option value="">Choose…</option>
                       {(f.options ?? []).map((o) => (
                         <option key={o}>{o}</option>
                       ))}
                     </select>
+                  ) : f.type === "long" ? (
+                    <textarea
+                      name={f.key}
+                      required={f.required}
+                      rows={3}
+                      className="w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-elevate-400"
+                    />
                   ) : (
-                    <input name={f.key} className="w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-elevate-400" />
+                    <input
+                      name={f.key}
+                      required={f.required}
+                      className="w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-elevate-400"
+                    />
                   )}
                 </label>
               ))}
@@ -176,7 +205,9 @@ export default async function FunnelPage({
                 {funnel.ctaLabel}
               </button>
               <p className="text-center text-[11px] text-ink-faint">
-                No spam, ever. We&apos;ll send your resource and one helpful follow-up.
+                {isForm
+                  ? "Your answers stay private — they go straight to your agent, nowhere else."
+                  : "No spam, ever. We'll send your resource and one helpful follow-up."}
               </p>
             </form>
 

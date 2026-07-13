@@ -496,19 +496,34 @@ export async function saveFunnel(fd: FormData) {
   const id = n(fd, "id");
   const slug = s(fd, "slug").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
   if (!slug) return;
-  // Custom questions: one per line. "Label: opt1 / opt2" = dropdown, plain = text.
+  // Custom questions, one per line:
+  //   "Label"                → short text
+  //   "+Label"               → long answer (paragraph)
+  //   "Label: opt1 / opt2"   → dropdown
+  //   trailing "!" on the label → required
   const fields = s(fd, "fieldsRaw")
     .split("\n")
     .map((line) => line.trim())
     .filter(Boolean)
-    .slice(0, 6)
+    .slice(0, 25)
     .map((line, i) => {
+      let long = false;
+      if (line.startsWith("+")) {
+        long = true;
+        line = line.slice(1).trim();
+      }
       const colon = line.indexOf(":");
       const opts = colon > 0 ? line.slice(colon + 1).split("/").map((o) => o.trim()).filter(Boolean) : [];
-      if (colon > 0 && opts.length > 1) {
-        return { key: `q${i}`, label: line.slice(0, colon).trim(), type: "select" as const, options: opts };
+      let label = colon > 0 && opts.length > 1 ? line.slice(0, colon).trim() : line;
+      let required = false;
+      if (label.endsWith("!")) {
+        required = true;
+        label = label.slice(0, -1).trim();
       }
-      return { key: `q${i}`, label: line, type: "text" as const };
+      if (colon > 0 && opts.length > 1) {
+        return { key: `q${i}`, label, type: "select" as const, options: opts, required };
+      }
+      return { key: `q${i}`, label, type: (long ? "long" : "text") as "long" | "text", required };
     });
 
   // Optional uploaded freebie (PDF etc., ≤ 4MB) — stored in the row, served
@@ -522,17 +537,20 @@ export async function saveFunnel(fd: FormData) {
     resourceName = file.name;
   }
 
+  const kind = (s(fd, "kind") === "form" ? "form" : "funnel") as "form" | "funnel";
   const base = {
     slug,
+    kind,
     name: s(fd, "name") || slug,
     template: (s(fd, "template") === "call" ? "call" : "magnet") as "call" | "magnet",
     headline: s(fd, "headline"),
     subhead: s(fd, "subhead"),
     bullets: s(fd, "bullets").split("\n").map((b) => b.trim()).filter(Boolean).slice(0, 6),
     testimonial: s(fd, "testimonial"),
-    ctaLabel: s(fd, "ctaLabel") || "Send it to me",
+    ctaLabel: s(fd, "ctaLabel") || (kind === "form" ? "Submit" : "Send it to me"),
     resourceUrl: s(fd, "resourceUrl"),
     calendlyUrl: s(fd, "calendlyUrl"),
+    thanksNote: s(fd, "thanksNote"),
     fields,
     active: s(fd, "active") !== "false",
   };
@@ -576,45 +594,71 @@ export async function submitFunnel(fd: FormData) {
   const funnel = (await store.listFunnels()).find((f) => f.id === funnelId && f.active);
   if (!funnel) return;
 
-  // Custom answers → notes (and timeline if a question mentions it)
-  const answers: string[] = [];
+  // Custom answers (kept verbatim on the stored response)
+  const answers: { label: string; value: string }[] = [];
   let timeline = "";
   for (const f of funnel.fields) {
     const v = s(fd, f.key);
     if (!v) continue;
-    answers.push(`${f.label}: ${v}`);
+    answers.push({ label: f.label, value: v });
     if (/timeline|when|pcs|date/i.test(f.label) && !timeline) timeline = v;
   }
 
-  await store.createLead({
-    date: new Date().toLocaleDateString("en-US"),
+  // Every submission is stored — forms live in the response inbox,
+  // funnel submissions keep a paper trail too.
+  const submission = await store.createSubmission({
+    funnelId: funnel.id,
     name,
-    phone,
     email,
-    source: funnel.name,
-    type: "Buyer",
-    timeline,
-    budget: "",
-    area: "",
-    agent: "",
-    followUpStatus: "New — needs first call",
-    lastContact: "",
-    notes: answers.join(" · "),
+    phone,
+    answers,
+    leadId: null,
+    dealId: null,
+    createdAt: new Date().toISOString(),
   });
   await store.bumpFunnel(funnel.id, "submissions");
 
-  // → Lofty (via Zapier catch hook, fire-and-forget)
-  const hook = process.env.ZAPIER_LEAD_HOOK_URL;
-  if (hook) {
-    fetch(hook, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ event: "funnel_lead", funnel: funnel.name, name, email, phone, timeline, answers }),
-    }).catch((err) => console.error("Funnel Zapier hook failed (non-blocking):", err));
+  // Marketing funnels auto-create a lead; intake forms wait for you to
+  // create/attach one from the response inbox.
+  if (funnel.kind !== "form") {
+    const lead = await store.createLead({
+      date: new Date().toLocaleDateString("en-US"),
+      name,
+      phone,
+      email,
+      source: funnel.name,
+      type: "Buyer",
+      timeline,
+      budget: "",
+      area: "",
+      agent: "",
+      followUpStatus: "New — needs first call",
+      lastContact: "",
+      notes: answers.map((a) => `${a.label}: ${a.value}`).join(" · "),
+    });
+    await store.updateSubmission(submission.id, { leadId: lead.id });
+
+    // → Lofty (via Zapier catch hook, fire-and-forget)
+    const hook = process.env.ZAPIER_LEAD_HOOK_URL;
+    if (hook) {
+      fetch(hook, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "funnel_lead",
+          funnel: funnel.name,
+          name,
+          email,
+          phone,
+          timeline,
+          answers: answers.map((a) => `${a.label}: ${a.value}`),
+        }),
+      }).catch((err) => console.error("Funnel Zapier hook failed (non-blocking):", err));
+    }
   }
 
   // Email the freebie (needs RESEND_API_KEY + verified domain to reach prospects)
-  if (process.env.RESEND_API_KEY && email && funnel.template === "magnet") {
+  if (process.env.RESEND_API_KEY && email && funnel.kind !== "form" && funnel.template === "magnet") {
     const settings = await store.getSettings();
     const { brandOf } = await import("@/lib/brand");
     const brand = brandOf(settings);
@@ -647,6 +691,85 @@ export async function submitFunnel(fd: FormData) {
   revalidatePath("/leads");
   revalidatePath("/funnels");
   redirect(`/f/${funnel.slug}?thanks=1`);
+}
+
+// ── Form responses: create/attach leads & clients ────────────────
+export async function createLeadFromSubmission(fd: FormData) {
+  const id = n(fd, "id");
+  if (id == null) return;
+  const sub = (await store.listSubmissions()).find((x) => x.id === id);
+  if (!sub || sub.leadId != null) return;
+  const funnel = (await store.listFunnels()).find((f) => f.id === sub.funnelId);
+  const timeline =
+    sub.answers.find((a) => /timeline|when|pcs|purchase/i.test(a.label))?.value ?? "";
+  const budget = sub.answers.find((a) => /price|budget/i.test(a.label))?.value ?? "";
+  const lead = await store.createLead({
+    date: new Date().toLocaleDateString("en-US"),
+    name: sub.name,
+    phone: sub.phone,
+    email: sub.email,
+    source: funnel?.name ?? "Form",
+    type: /seller/i.test(funnel?.name ?? "") ? "Seller" : "Buyer",
+    timeline,
+    budget,
+    area: "",
+    agent: "",
+    followUpStatus: "New — needs first call",
+    lastContact: "",
+    notes: sub.answers.map((a) => `${a.label}: ${a.value}`).join(" · "),
+  });
+  await store.updateSubmission(id, { leadId: lead.id });
+  revalidateAll();
+  revalidatePath(`/funnels/${sub.funnelId}`);
+}
+
+// Attach a response to an existing lead or deal/client. The answers get
+// appended where you'll actually read them: lead notes, or a deal note.
+export async function attachSubmission(fd: FormData) {
+  const id = n(fd, "id");
+  const target = s(fd, "target"); // "lead:12" | "deal:34"
+  if (id == null || !target.includes(":")) return;
+  const sub = (await store.listSubmissions()).find((x) => x.id === id);
+  if (!sub) return;
+  const funnel = (await store.listFunnels()).find((f) => f.id === sub.funnelId);
+  const [kind, ridRaw] = target.split(":");
+  const rid = parseInt(ridRaw);
+  if (isNaN(rid)) return;
+  const summary = sub.answers.map((a) => `${a.label}: ${a.value}`).join("\n");
+  const header = `${funnel?.name ?? "Form"} — submitted ${new Date(sub.createdAt).toLocaleDateString("en-US")}`;
+
+  if (kind === "lead") {
+    const lead = (await store.listLeads()).find((l) => l.id === rid);
+    if (!lead) return;
+    await store.updateLead(rid, {
+      notes: [lead.notes, `[${header}] ${sub.answers.map((a) => `${a.label}: ${a.value}`).join(" · ")}`]
+        .filter(Boolean)
+        .join("\n"),
+    });
+    await store.updateSubmission(id, { leadId: rid, dealId: null });
+  } else if (kind === "deal") {
+    await store.createNote({
+      dealId: rid,
+      body: `${header}\n${summary}`,
+      author: await actorName(),
+      pinned: false,
+      createdAt: new Date().toISOString(),
+    });
+    await store.updateSubmission(id, { dealId: rid, leadId: null });
+    revalidatePath(`/deals/${rid}`);
+  }
+  revalidateAll();
+  revalidatePath(`/funnels/${sub.funnelId}`);
+}
+
+export async function deleteSubmission(fd: FormData) {
+  await requireAdmin();
+  const id = n(fd, "id");
+  if (id == null) return;
+  const sub = (await store.listSubmissions()).find((x) => x.id === id);
+  await store.deleteSubmission(id);
+  if (sub) revalidatePath(`/funnels/${sub.funnelId}`);
+  revalidatePath("/funnels");
 }
 
 // ── Google Calendar ──────────────────────────────────────────────

@@ -327,17 +327,23 @@ export interface PnlEntry {
   recurOf?: number | null; // id of the template this copy came from
 }
 
-// ── Funnels: public landing pages that capture leads ─────────────
+// ── Funnels & forms: public pages that capture people ────────────
+// kind "funnel" = marketing page, submissions become Leads automatically.
+// kind "form" = intake questionnaire (buyer/seller/get-to-know-you) —
+// responses are stored in an inbox; you create a lead from one or attach
+// it to an existing lead/client yourself.
 export interface FunnelField {
   key: string;
   label: string;
-  type: "text" | "select";
+  type: "text" | "select" | "long"; // long = paragraph answer
   options?: string[];
+  required?: boolean;
 }
 
 export interface Funnel {
   id: number;
   slug: string; // public URL: /f/[slug]
+  kind?: "funnel" | "form"; // default funnel
   name: string; // internal name — becomes the lead's source
   template: "magnet" | "call"; // free resource vs straight to booking
   headline: string;
@@ -349,10 +355,24 @@ export interface Funnel {
   resourceName: string; // filename when a file is uploaded instead
   resourceData: string; // base64 of the uploaded file ("" = none)
   calendlyUrl: string; // embedded on the thank-you step
+  thanksNote: string; // custom thank-you message (forms especially)
   fields: FunnelField[]; // custom questions beyond name/phone/email
   active: boolean;
   views: number;
   submissions: number;
+}
+
+// A stored response (every funnel/form submission is kept)
+export interface FormSubmission {
+  id: number;
+  funnelId: number;
+  name: string;
+  email: string;
+  phone: string;
+  answers: { label: string; value: string }[];
+  leadId: number | null; // linked lead (created-from or attached)
+  dealId: number | null; // linked deal/client
+  createdAt: string; // ISO
 }
 
 export interface AppData {

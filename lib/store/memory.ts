@@ -1,4 +1,4 @@
-import { Deal, Lead, TaskItem, TeamMember, Settings, Sop, PnlEntry, Activity, DealNote, Funnel, DEFAULT_BROKERAGE, DEFAULT_CHECKLISTS, DEFAULT_MEASURABLES, DEFAULT_LINKS } from "../types";
+import { Deal, Lead, TaskItem, TeamMember, Settings, Sop, PnlEntry, Activity, DealNote, Funnel, FormSubmission, DEFAULT_BROKERAGE, DEFAULT_CHECKLISTS, DEFAULT_MEASURABLES, DEFAULT_LINKS } from "../types";
 import { SEED_DEALS, SEED_LEADS, SEED_TASKS, SEED_TEAM, SEED_SETTINGS, SEED_SOPS, SEED_PNL } from "../seed";
 import type { Repo } from "./repo";
 
@@ -14,6 +14,7 @@ interface Mem {
   activities: Activity[];
   notes: DealNote[];
   funnels: Funnel[];
+  submissions: FormSubmission[];
   calTokens: Record<string, { token: string; at: string }>;
   settings: Settings;
   nextId: number;
@@ -34,6 +35,7 @@ function mem(): Mem {
       activities: [],
       notes: [],
       funnels: [],
+      submissions: [],
       calTokens: {},
       settings: JSON.parse(JSON.stringify(SEED_SETTINGS)),
       nextId: id,
@@ -193,6 +195,26 @@ export const memoryRepo: Repo = {
     const m = mem();
     const f = m.funnels.find((x) => x.id === id);
     if (f) f[stat] += 1;
+  },
+
+  async listSubmissions(funnelId) {
+    return mem().submissions
+      .filter((s) => funnelId == null || s.funnelId === funnelId)
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  },
+  async createSubmission(d) {
+    const m = mem();
+    const s = { ...d, id: m.nextId++ } as FormSubmission;
+    m.submissions.push(s);
+    return s;
+  },
+  async updateSubmission(id, d) {
+    const m = mem();
+    const i = m.submissions.findIndex((x) => x.id === id);
+    if (i >= 0) m.submissions[i] = { ...m.submissions[i], ...d, id };
+  },
+  async deleteSubmission(id) {
+    mem().submissions = mem().submissions.filter((x) => x.id !== id);
   },
 
   async listCalendarConnections() {
