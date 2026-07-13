@@ -690,7 +690,8 @@ export async function submitFunnel(fd: FormData) {
 
   revalidatePath("/leads");
   revalidatePath("/funnels");
-  redirect(`/f/${funnel.slug}?thanks=1`);
+  // First name rides along so the thank-you can greet them personally
+  redirect(`/f/${funnel.slug}?thanks=1&n=${encodeURIComponent(name.trim().split(" ")[0])}`);
 }
 
 // ── Form responses: create/attach leads & clients ────────────────

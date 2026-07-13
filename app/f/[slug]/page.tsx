@@ -2,6 +2,7 @@ import { store } from "@/lib/store";
 import { brandOf, DEFAULT_BRAND } from "@/lib/brand";
 import { submitFunnel } from "@/app/actions";
 import { Funnel } from "@/lib/types";
+import FormExperience from "@/components/form-experience";
 import { Check, Download, CalendarCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ export default async function FunnelPage({
   searchParams,
 }: {
   params: { slug: string };
-  searchParams?: { thanks?: string };
+  searchParams?: { thanks?: string; n?: string };
 }) {
   let funnel: Funnel | undefined;
   let brand = DEFAULT_BRAND;
@@ -49,6 +50,27 @@ export default async function FunnelPage({
   const isForm = funnel.kind === "form";
   const hasResource = !isForm && Boolean(funnel.resourceData || funnel.resourceUrl);
   const downloadHref = funnel.resourceData ? `/f/${funnel.slug}/resource` : funnel.resourceUrl;
+  const firstName = (searchParams?.n ?? "").slice(0, 30);
+
+  // Intake forms get the luxe conversational experience
+  if (isForm && !thanks) {
+    return (
+      <FormExperience
+        funnel={{
+          id: funnel.id,
+          name: funnel.name,
+          headline: funnel.headline,
+          subhead: funnel.subhead,
+          ctaLabel: funnel.ctaLabel,
+          fields: funnel.fields,
+        }}
+        companyName={brand.companyName}
+        brokerageName={brand.brokerageName}
+        city={brand.city}
+        logoUrl={logo}
+      />
+    );
+  }
 
   return (
     <main className="min-h-screen bg-chalk pb-16">
@@ -82,7 +104,7 @@ export default async function FunnelPage({
           {thanks && (
             <h1 className="mt-8 font-display text-3xl font-bold leading-tight">
               {isForm
-                ? "Got it — thank you!"
+                ? `Thank you${firstName ? `, ${firstName}` : ""}. We read every word.`
                 : `You're all set${funnel.template === "magnet" ? " — it's on the way" : ""}.`}
             </h1>
           )}
