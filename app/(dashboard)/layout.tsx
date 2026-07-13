@@ -1,6 +1,7 @@
 import Sidebar from "@/components/sidebar";
 import Assistant from "@/components/assistant";
 import CommandPalette, { SearchItem } from "@/components/command-palette";
+import BottomNav from "@/components/bottom-nav";
 import { store } from "@/lib/store";
 import { brandOf, DEFAULT_BRAND, type Brand } from "@/lib/brand";
 
@@ -79,9 +80,10 @@ export default async function DashboardLayout({
         brokerageName={brand.brokerageName}
         tagline={brand.tagline}
       />
-      <main className="px-4 py-6 sm:px-6 lg:ml-60 lg:px-8">
+      <main className="px-4 py-6 pb-24 sm:px-6 lg:ml-60 lg:px-8 lg:pb-6">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
+      <BottomNav />
       <CommandPalette items={searchItems} />
       <Assistant />
     </div>

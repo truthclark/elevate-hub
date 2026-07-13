@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Table2,
@@ -149,6 +149,13 @@ export default function Sidebar({
   tagline?: string;
 }) {
   const [open, setOpen] = useState(false);
+
+  // The mobile bottom bar's Menu tab opens this drawer
+  useEffect(() => {
+    const openDrawer = () => setOpen(true);
+    window.addEventListener("open-drawer", openDrawer);
+    return () => window.removeEventListener("open-drawer", openDrawer);
+  }, []);
 
   return (
     <>

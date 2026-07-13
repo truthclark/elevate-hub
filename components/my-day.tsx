@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { TaskItem, TeamMember } from "@/lib/types";
 import { saveTask, toggleTask, patchTask, reorderTasks } from "@/app/actions";
 import { fireConfetti } from "@/lib/confetti";
+import Triage from "./triage";
 import { fmtDate, parseDateSafe, initialsOf, cn } from "@/lib/utils";
 import { Avatar } from "./ui";
 import { TaskModal, EditIcon } from "./forms";
@@ -105,6 +106,7 @@ export default function MyDay({
   const [dragId, setDragId] = useState<number | null>(null);
   const [dayOrder, setDayOrder] = useState<number[] | null>(null);
   const [undo, setUndo] = useState<{ id: number; title: string } | null>(null);
+  const [triageOpen, setTriageOpen] = useState(false);
   const undoTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const todayIso = isoOf(new Date());
@@ -229,6 +231,14 @@ export default function MyDay({
               {m.name.split(" ")[0]}
             </button>
           ))}
+          {view === "day" && selIso === todayIso && overdue.length > 0 && (
+            <button
+              onClick={() => setTriageOpen(true)}
+              className="flex items-center gap-1.5 rounded-full bg-rose-500 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-rose-400"
+            >
+              <AlertCircle size={12} /> Plan my day ({overdue.length})
+            </button>
+          )}
           <span className="mx-1 h-4 w-px bg-mist" />
           {/* view + navigation */}
           <button onClick={() => { setView(view === "day" ? "week" : "day"); setOffset(0); }}
@@ -423,6 +433,11 @@ export default function MyDay({
             Drag a task onto another day to reschedule it · click a day&apos;s name to open it.
           </p>
         </div>
+      )}
+
+      {/* triage overlay */}
+      {triageOpen && overdue.length > 0 && (
+        <Triage tasks={overdue} onClose={() => setTriageOpen(false)} />
       )}
 
       {/* undo toast */}
