@@ -17,7 +17,7 @@ import {
   logActivity,
 } from "@/app/actions";
 import { fmtMoney, fmtDate, parseDateSafe, cn } from "@/lib/utils";
-import { inputCls } from "@/components/modal";
+import { inputCls, inputBase } from "@/components/modal";
 import { DEFAULT_CHECKLISTS, CHECKLIST_TITLES, ACTIVITY_KINDS, DealNote } from "@/lib/types";
 import {
   ArrowLeft,
@@ -318,17 +318,17 @@ export default async function DealPage({ params }: { params: { id: string } }) {
               <input type="hidden" name="dealId" value={deal.id} />
               <input type="hidden" name="about" value={deal.name || deal.address} />
               <input type="hidden" name="date" value={todayIso} />
-              <select name="kind" className={cn(inputCls, "w-36")} defaultValue="Call">
+              <select name="kind" className={cn(inputBase, "w-36")} defaultValue="Call">
                 {ACTIVITY_KINDS.map((k) => (
                   <option key={k}>{k}</option>
                 ))}
               </select>
-              <select name="who" className={cn(inputCls, "w-32")} defaultValue={me}>
+              <select name="who" className={cn(inputBase, "w-32")} defaultValue={me}>
                 {data.team.filter((m) => m.active).map((m) => (
                   <option key={m.id}>{m.name}</option>
                 ))}
               </select>
-              <input name="notes" placeholder="What happened?" className={cn(inputCls, "min-w-24 flex-1")} />
+              <input name="notes" placeholder="What happened?" className={cn(inputBase, "min-w-24 flex-1")} />
               <button
                 type="submit"
                 className="shrink-0 rounded-xl bg-ink px-3.5 py-2 text-xs font-bold text-white transition hover:bg-ink-soft"

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Modal, Field, inputCls, PrimaryBtn, useModal } from "./modal";
+import { Modal, Field, inputCls, inputBase, PrimaryBtn, useModal } from "./modal";
 import { saveFunnel, deleteFunnel } from "@/app/actions";
 import { Funnel } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -78,32 +78,15 @@ function QuestionsEditor({ initial }: { initial: Funnel["fields"] }) {
               drag === i && "opacity-50 ring-2 ring-elevate-300"
             )}
           >
+            {/* line 1: the question itself gets the full width */}
             <div className="flex items-center gap-2">
               <GripVertical size={14} className="shrink-0 cursor-grab text-ink-faint/50" />
               <input
                 value={q.label}
                 onChange={(e) => update(i, { label: e.target.value })}
-                placeholder="Question"
+                placeholder={`Question ${i + 1}`}
                 className={cn(inputCls, "min-w-0 flex-1")}
               />
-              <select
-                value={q.type}
-                onChange={(e) => update(i, { type: e.target.value })}
-                className={cn(inputCls, "w-40 shrink-0")}
-              >
-                {FIELD_TYPE_LABELS.map(([v, l]) => (
-                  <option key={v} value={v}>{l}</option>
-                ))}
-              </select>
-              <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-ink-muted" title="Required">
-                <input
-                  type="checkbox"
-                  checked={q.required}
-                  onChange={(e) => update(i, { required: e.target.checked })}
-                  className="accent-[#05c3f9]"
-                />
-                Req.
-              </label>
               <button
                 type="button"
                 onClick={() => setQs(qs.filter((_, j) => j !== i))}
@@ -113,14 +96,38 @@ function QuestionsEditor({ initial }: { initial: Funnel["fields"] }) {
                 <Trash2 size={13} />
               </button>
             </div>
+            {/* line 2: type + required */}
+            <div className="mt-2 flex items-center gap-3 pl-6">
+              <select
+                value={q.type}
+                onChange={(e) => update(i, { type: e.target.value })}
+                className={cn(inputBase, "w-48")}
+              >
+                {FIELD_TYPE_LABELS.map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+              <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-ink-muted">
+                <input
+                  type="checkbox"
+                  checked={q.required}
+                  onChange={(e) => update(i, { required: e.target.checked })}
+                  className="accent-[#05c3f9]"
+                />
+                Required
+              </label>
+            </div>
             {HAS_OPTIONS.includes(q.type) && (
-              <textarea
-                value={q.optionsText}
-                onChange={(e) => update(i, { optionsText: e.target.value })}
-                rows={Math.min(6, Math.max(2, q.optionsText.split("\n").length))}
-                placeholder={"Options — one per line\nYes\nNo"}
-                className={cn(inputCls, "mt-2 w-full font-mono text-[12.5px]")}
-              />
+              <div className="mt-2 pl-6">
+                <p className="mb-1 text-[11px] font-semibold text-ink-faint">Options — one per line</p>
+                <textarea
+                  value={q.optionsText}
+                  onChange={(e) => update(i, { optionsText: e.target.value })}
+                  rows={Math.min(6, Math.max(2, q.optionsText.split("\n").length))}
+                  placeholder={"Yes\nNo"}
+                  className={cn(inputCls, "font-mono text-[12.5px]")}
+                />
+              </div>
             )}
           </div>
         ))}
