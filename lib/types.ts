@@ -334,10 +334,19 @@ export interface PnlEntry {
 // kind "form" = intake questionnaire (buyer/seller/get-to-know-you) —
 // responses are stored in an inbox; you create a lead from one or attach
 // it to an existing lead/client yourself.
+export type FunnelFieldType =
+  | "text" // short answer
+  | "long" // paragraph
+  | "select" // dropdown
+  | "radio" // multiple choice, pick one
+  | "multi" // checkboxes, pick many
+  | "number"
+  | "address"; // autocomplete via free OpenStreetMap geocoder
+
 export interface FunnelField {
   key: string;
   label: string;
-  type: "text" | "select" | "long"; // long = paragraph answer
+  type: FunnelFieldType;
   options?: string[];
   required?: boolean;
 }

@@ -75,19 +75,8 @@ export default async function ClientTimelinePage({
 
   return (
     <main className="min-h-screen bg-chalk pb-16">
-      {/* Header — property photo hero when we have one */}
+      {/* Header */}
       <div className="relative overflow-hidden bg-ink px-5 pb-16 pt-8 text-white">
-        {deal.photo && (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={deal.photo}
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#111118]/70 via-[#111118]/55 to-[#111118]/85" />
-          </>
-        )}
         <div className="relative mx-auto max-w-xl">
           <div className="flex items-center gap-3">
             {logo ? (
@@ -124,6 +113,18 @@ export default async function ClientTimelinePage({
       </div>
 
       <div className="mx-auto -mt-8 max-w-xl px-5">
+        {/* Property photo — full 16:9, shown whole like a listing card */}
+        {deal.photo && (
+          <div className="mb-4 aspect-video overflow-hidden rounded-2xl shadow-card">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={deal.photo}
+              alt={deal.address || "Your new home"}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        )}
+
         {/* Progress card */}
         <div className="card p-6">
           <div className="mb-2 flex items-center gap-4">

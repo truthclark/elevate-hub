@@ -229,37 +229,10 @@ export default async function DealPage({ params }: { params: { id: string } }) {
         <ArrowLeft size={13} /> All deals
       </Link>
 
-      {/* Property hero */}
-      {deal.photo && (
-        <div className="relative mb-6 h-44 overflow-hidden rounded-2xl sm:h-56">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={deal.photo} alt={deal.address || deal.name} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#111118]/75 via-transparent to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 flex flex-wrap items-end justify-between gap-2 p-5">
-            <div>
-              <p className="font-display text-xl font-bold text-white sm:text-2xl">
-                {deal.address || deal.name}
-              </p>
-              {deal.address && deal.name && (
-                <p className="text-sm text-white/70">{deal.name}</p>
-              )}
-            </div>
-            <span className="flex gap-2">
-              <TypeBadge value={deal.side} />
-              <StatusBadge value={deal.status} />
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Summary strip */}
       <div className="card mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 p-5">
-        {!deal.photo && (
-          <>
-            <TypeBadge value={deal.side} />
-            <StatusBadge value={deal.status} />
-          </>
-        )}
+        <TypeBadge value={deal.side} />
+        <StatusBadge value={deal.status} />
         <span className="text-sm">
           <span className="text-ink-faint">Price </span>
           <span className="font-semibold">{fmtMoney(deal.price)}</span>
@@ -285,6 +258,19 @@ export default async function DealPage({ params }: { params: { id: string } }) {
       <div className="grid gap-4 lg:grid-cols-3">
         {/* ── Left: what's ahead + the story so far ── */}
         <div className="space-y-4 lg:col-span-2">
+          {/* Property photo — full 16:9, never cropped into a strip */}
+          {deal.photo && (
+            <div className="relative aspect-video overflow-hidden rounded-2xl shadow-card">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={deal.photo} alt={deal.address || deal.name} className="h-full w-full object-cover" />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#111118]/70 to-transparent p-4 pt-10">
+                <p className="font-display text-lg font-bold text-white">
+                  {deal.address || deal.name}
+                </p>
+              </div>
+            </div>
+          )}
+
           {timeline.some((m) => !m.done) && (
             <Section title="Coming up" action={<CalendarClock size={16} className="text-elevate-600" />}>
               <div className="flex flex-wrap gap-2">

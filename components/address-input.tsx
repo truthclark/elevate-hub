@@ -20,11 +20,17 @@ function format(p: Record<string, string | undefined>): string {
 export default function AddressInput({
   name,
   defaultValue,
+  onValueChange,
 }: {
   name: string;
   defaultValue?: string;
+  onValueChange?: (v: string) => void; // for controlled parents (form experience)
 }) {
-  const [value, setValue] = useState(defaultValue ?? "");
+  const [value, setValueRaw] = useState(defaultValue ?? "");
+  const setValue = (v: string) => {
+    setValueRaw(v);
+    onValueChange?.(v);
+  };
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout>>();

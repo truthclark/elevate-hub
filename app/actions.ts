@@ -518,35 +518,41 @@ export async function saveFunnel(fd: FormData) {
   const id = n(fd, "id");
   const slug = s(fd, "slug").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
   if (!slug) return;
-  // Custom questions, one per line:
-  //   "Label"                → short text
-  //   "+Label"               → long answer (paragraph)
-  //   "Label: opt1 / opt2"   → dropdown
-  //   trailing "!" on the label → required
-  const fields = s(fd, "fieldsRaw")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .slice(0, 25)
-    .map((line, i) => {
-      let long = false;
-      if (line.startsWith("+")) {
-        long = true;
-        line = line.slice(1).trim();
-      }
-      const colon = line.indexOf(":");
-      const opts = colon > 0 ? line.slice(colon + 1).split("/").map((o) => o.trim()).filter(Boolean) : [];
-      let label = colon > 0 && opts.length > 1 ? line.slice(0, colon).trim() : line;
-      let required = false;
-      if (label.endsWith("!")) {
-        required = true;
-        label = label.slice(0, -1).trim();
-      }
-      if (colon > 0 && opts.length > 1) {
-        return { key: `q${i}`, label, type: "select" as const, options: opts, required };
-      }
-      return { key: `q${i}`, label, type: (long ? "long" : "text") as "long" | "text", required };
-    });
+  // Questions arrive as JSON from the visual builder
+  const FIELD_TYPES = ["text", "long", "select", "radio", "multi", "number", "address"] as const;
+  type FT = (typeof FIELD_TYPES)[number];
+  let fields: { key: string; label: string; type: FT; options?: string[]; required?: boolean }[] = [];
+  try {
+    const parsed = JSON.parse(s(fd, "fieldsJson") || "[]") as {
+      label?: unknown;
+      type?: unknown;
+      options?: unknown;
+      required?: unknown;
+    }[];
+    fields = parsed
+      .filter((q) => typeof q.label === "string" && q.label.trim())
+      .slice(0, 30)
+      .map((q, i) => {
+        const type = (FIELD_TYPES.includes(q.type as FT) ? q.type : "text") as FT;
+        const needsOpts = type === "select" || type === "radio" || type === "multi";
+        return {
+          key: `q${i}`,
+          label: (q.label as string).trim(),
+          type,
+          options: needsOpts
+            ? (Array.isArray(q.options) ? q.options : [])
+                .map((o) => String(o).trim())
+                .filter(Boolean)
+                .slice(0, 20)
+            : undefined,
+          required: Boolean(q.required),
+        };
+      })
+      // an option-based question with no options can't render — drop it
+      .filter((q) => !["select", "radio", "multi"].includes(q.type) || (q.options?.length ?? 0) > 0);
+  } catch {
+    fields = [];
+  }
 
   // Optional uploaded freebie (PDF etc., ≤ 4MB) — stored in the row, served
   // from /f/[slug]/resource and attached to the delivery email.
@@ -637,7 +643,11 @@ export async function submitFunnel(fd: FormData) {
   const answers: { label: string; value: string }[] = [];
   let timeline = "";
   for (const f of funnel.fields) {
-    const v = s(fd, f.key);
+    // checkboxes post one entry per selection
+    const v =
+      f.type === "multi"
+        ? fd.getAll(f.key).map((x) => String(x).trim()).filter(Boolean).join("; ")
+        : s(fd, f.key);
     if (!v) continue;
     answers.push({ label: f.label, value: v });
     if (/timeline|when|pcs|date/i.test(f.label) && !timeline) timeline = v;

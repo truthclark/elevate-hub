@@ -3,6 +3,7 @@ import { brandOf, DEFAULT_BRAND } from "@/lib/brand";
 import { submitFunnel } from "@/app/actions";
 import { Funnel } from "@/lib/types";
 import FormExperience from "@/components/form-experience";
+import AddressInput from "@/components/address-input";
 import { Check, Download, CalendarCheck } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -205,6 +206,24 @@ export default async function FunnelPage({
                         <option key={o}>{o}</option>
                       ))}
                     </select>
+                  ) : f.type === "radio" ? (
+                    <span className="space-y-1.5">
+                      {(f.options ?? []).map((o, oi) => (
+                        <label key={o} className="flex items-center gap-2.5 rounded-xl border border-mist px-3.5 py-2.5 text-sm">
+                          <input type="radio" name={f.key} value={o} required={f.required && oi === 0} className="accent-[#05c3f9]" />
+                          {o}
+                        </label>
+                      ))}
+                    </span>
+                  ) : f.type === "multi" ? (
+                    <span className="space-y-1.5">
+                      {(f.options ?? []).map((o) => (
+                        <label key={o} className="flex items-center gap-2.5 rounded-xl border border-mist px-3.5 py-2.5 text-sm">
+                          <input type="checkbox" name={f.key} value={o} className="accent-[#05c3f9]" />
+                          {o}
+                        </label>
+                      ))}
+                    </span>
                   ) : f.type === "long" ? (
                     <textarea
                       name={f.key}
@@ -212,6 +231,16 @@ export default async function FunnelPage({
                       rows={3}
                       className="w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-elevate-400"
                     />
+                  ) : f.type === "number" ? (
+                    <input
+                      name={f.key}
+                      type="number"
+                      inputMode="decimal"
+                      required={f.required}
+                      className="w-full rounded-xl border border-mist bg-white px-3.5 py-2.5 text-sm outline-none transition focus:border-elevate-400"
+                    />
+                  ) : f.type === "address" ? (
+                    <AddressInput name={f.key} />
                   ) : (
                     <input
                       name={f.key}

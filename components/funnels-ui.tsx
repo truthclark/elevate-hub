@@ -6,18 +6,135 @@ import { Modal, Field, inputCls, PrimaryBtn, useModal } from "./modal";
 import { saveFunnel, deleteFunnel } from "@/app/actions";
 import { Funnel } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { Plus, Link2, Check, Eye, Users, Percent, Pencil, Trash2, Rocket, Inbox, ClipboardList } from "lucide-react";
+import { Plus, Link2, Check, Eye, Users, Percent, Pencil, Trash2, Rocket, Inbox, ClipboardList, GripVertical } from "lucide-react";
 
-// Serialize stored fields back to the "one question per line" syntax:
-// "+" prefix = long answer, "!" suffix = required, ": a / b" = dropdown
-const fieldsToRaw = (f: Funnel["fields"]) =>
-  f
-    .map((x) => {
-      const label = `${x.label}${x.required ? "!" : ""}`;
-      if (x.type === "select") return `${label}: ${(x.options ?? []).join(" / ")}`;
-      return `${x.type === "long" ? "+" : ""}${label}`;
-    })
-    .join("\n");
+// ── Visual question builder (Google-Forms style) ─────────────────
+const FIELD_TYPE_LABELS: [string, string][] = [
+  ["text", "Short answer"],
+  ["long", "Paragraph"],
+  ["select", "Dropdown"],
+  ["radio", "Multiple choice"],
+  ["multi", "Checkboxes"],
+  ["number", "Number"],
+  ["address", "Address (autocomplete)"],
+];
+const HAS_OPTIONS = ["select", "radio", "multi"];
+
+interface QDraft {
+  label: string;
+  type: string;
+  optionsText: string;
+  required: boolean;
+}
+
+function QuestionsEditor({ initial }: { initial: Funnel["fields"] }) {
+  const [qs, setQs] = useState<QDraft[]>(
+    (initial ?? []).map((f) => ({
+      label: f.label,
+      type: f.type,
+      optionsText: (f.options ?? []).join("\n"),
+      required: Boolean(f.required),
+    }))
+  );
+  const [drag, setDrag] = useState<number | null>(null);
+
+  const json = JSON.stringify(
+    qs.map((q) => ({
+      label: q.label,
+      type: q.type,
+      options: q.optionsText.split("\n").map((o) => o.trim()).filter(Boolean),
+      required: q.required,
+    }))
+  );
+
+  const update = (i: number, patch: Partial<QDraft>) =>
+    setQs(qs.map((q, j) => (j === i ? { ...q, ...patch } : q)));
+
+  const onDragOverRow = (i: number) => {
+    if (drag == null || drag === i) return;
+    const next = [...qs];
+    const [moved] = next.splice(drag, 1);
+    next.splice(i, 0, moved);
+    setQs(next);
+    setDrag(i);
+  };
+
+  return (
+    <div>
+      <input type="hidden" name="fieldsJson" value={json} />
+      <p className="mb-2 text-xs font-semibold text-ink-muted">
+        Questions <span className="font-normal text-ink-faint">(name, email, and phone are always asked first)</span>
+      </p>
+      <div className="space-y-2.5">
+        {qs.map((q, i) => (
+          <div
+            key={i}
+            draggable
+            onDragStart={() => setDrag(i)}
+            onDragOver={(e) => { e.preventDefault(); onDragOverRow(i); }}
+            onDragEnd={() => setDrag(null)}
+            className={cn(
+              "rounded-xl border border-mist bg-chalk/50 p-3",
+              drag === i && "opacity-50 ring-2 ring-elevate-300"
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <GripVertical size={14} className="shrink-0 cursor-grab text-ink-faint/50" />
+              <input
+                value={q.label}
+                onChange={(e) => update(i, { label: e.target.value })}
+                placeholder="Question"
+                className={cn(inputCls, "min-w-0 flex-1")}
+              />
+              <select
+                value={q.type}
+                onChange={(e) => update(i, { type: e.target.value })}
+                className={cn(inputCls, "w-40 shrink-0")}
+              >
+                {FIELD_TYPE_LABELS.map(([v, l]) => (
+                  <option key={v} value={v}>{l}</option>
+                ))}
+              </select>
+              <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-ink-muted" title="Required">
+                <input
+                  type="checkbox"
+                  checked={q.required}
+                  onChange={(e) => update(i, { required: e.target.checked })}
+                  className="accent-[#05c3f9]"
+                />
+                Req.
+              </label>
+              <button
+                type="button"
+                onClick={() => setQs(qs.filter((_, j) => j !== i))}
+                className="shrink-0 rounded p-1.5 text-ink-faint hover:bg-rose-50 hover:text-rose-500"
+                aria-label="Remove question"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+            {HAS_OPTIONS.includes(q.type) && (
+              <textarea
+                value={q.optionsText}
+                onChange={(e) => update(i, { optionsText: e.target.value })}
+                rows={Math.min(6, Math.max(2, q.optionsText.split("\n").length))}
+                placeholder={"Options — one per line\nYes\nNo"}
+                className={cn(inputCls, "mt-2 w-full font-mono text-[12.5px]")}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={() => setQs([...qs, { label: "", type: "text", optionsText: "", required: false }])}
+        className="mt-2.5 flex items-center gap-1.5 text-xs font-semibold text-elevate-600 hover:underline"
+      >
+        <Plus size={13} /> Add question
+      </button>
+    </div>
+  );
+}
 
 // ── Starters ─────────────────────────────────────────────────────
 const PCS_STARTER: Partial<Funnel> = {
@@ -180,17 +297,7 @@ function FunnelForm({ funnel, starter }: { funnel?: Funnel; starter?: Partial<Fu
         </>
       )}
 
-      <Field
-        label={`Questions — one per line. "+" in front = long answer, "!" after = required, ":" + options split by "/" = dropdown`}
-      >
-        <textarea
-          name="fieldsRaw"
-          defaultValue={f ? fieldsToRaw(f.fields ?? []) : ""}
-          rows={isForm ? 10 : 3}
-          className={cn(inputCls, "font-mono text-[12.5px]")}
-          placeholder={"What's your price range?!: Under $200K / $200K–$250K / $250K+\n+What matters most in your next home?"}
-        />
-      </Field>
+      <QuestionsEditor initial={f?.fields ?? []} />
       {isForm && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Cover photo (JPG/PNG, ≤2.5MB)">

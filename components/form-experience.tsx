@@ -6,7 +6,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { submitFunnel } from "@/app/actions";
-import { FunnelField } from "@/lib/types";
+import { FunnelField, FunnelFieldType } from "@/lib/types";
+import AddressInput from "./address-input";
 import { ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react";
 
 export interface ExperienceFunnel {
@@ -21,7 +22,7 @@ export interface ExperienceFunnel {
 interface Step {
   key: string;
   label: string;
-  type: "text" | "long" | "select" | "email" | "tel";
+  type: FunnelFieldType | "email" | "tel";
   options?: string[];
   required?: boolean;
   hint?: string;
@@ -182,7 +183,7 @@ export default function FormExperience({
               {step.hint && <p className="mt-1.5 text-sm text-ink-muted">{step.hint}</p>}
 
               <div className="mt-6">
-                {step.type === "select" ? (
+                {step.type === "select" || step.type === "radio" ? (
                   <div className={cls("grid gap-2", (step.options?.length ?? 0) > 5 && "sm:grid-cols-2")}>
                     {(step.options ?? []).map((o) => {
                       const selected = value === o;
@@ -206,6 +207,45 @@ export default function FormExperience({
                       );
                     })}
                   </div>
+                ) : step.type === "multi" ? (
+                  <div className={cls("grid gap-2", (step.options?.length ?? 0) > 5 && "sm:grid-cols-2")}>
+                    {(step.options ?? []).map((o) => {
+                      const picked = value ? value.split("; ") : [];
+                      const selected = picked.includes(o);
+                      return (
+                        <button
+                          key={o}
+                          onClick={() => {
+                            const next = selected ? picked.filter((x) => x !== o) : [...picked, o];
+                            set(next.join("; "));
+                          }}
+                          className={cls(
+                            "flex items-center justify-between rounded-xl border-2 px-4 py-3.5 text-left text-[15px] font-medium transition-all",
+                            selected
+                              ? "border-elevate-500 bg-elevate-50 text-ink"
+                              : "border-mist bg-chalk/60 text-ink-soft hover:border-elevate-200 hover:bg-elevate-50/40"
+                          )}
+                        >
+                          {o}
+                          {selected && <Check size={16} className="shrink-0 text-elevate-600" />}
+                        </button>
+                      );
+                    })}
+                    <p className="text-xs text-ink-faint sm:col-span-2">Pick all that apply, then Continue.</p>
+                  </div>
+                ) : step.type === "address" ? (
+                  <AddressInput name={step.key} defaultValue={value} onValueChange={set} />
+                ) : step.type === "number" ? (
+                  <input
+                    ref={inputRef}
+                    type="number"
+                    inputMode="decimal"
+                    value={value}
+                    onChange={(e) => set(e.target.value)}
+                    onKeyDown={onKey}
+                    placeholder="Type a number…"
+                    className="w-full rounded-xl border-2 border-mist bg-white px-4 py-3.5 text-lg text-ink outline-none transition placeholder:text-ink-faint focus:border-elevate-400"
+                  />
                 ) : step.type === "long" ? (
                   <textarea
                     ref={areaRef}
