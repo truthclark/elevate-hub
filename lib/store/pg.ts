@@ -139,6 +139,9 @@ async function init() {
       )`;
       await s`ALTER TABLE funnels ADD COLUMN IF NOT EXISTS kind text NOT NULL DEFAULT 'funnel'`;
       await s`ALTER TABLE funnels ADD COLUMN IF NOT EXISTS thanks_note text NOT NULL DEFAULT ''`;
+      await s`ALTER TABLE funnels ADD COLUMN IF NOT EXISTS cover_url text NOT NULL DEFAULT ''`;
+      await s`ALTER TABLE funnels ADD COLUMN IF NOT EXISTS cover_data text NOT NULL DEFAULT ''`;
+      await s`ALTER TABLE funnels ADD COLUMN IF NOT EXISTS cover_name text NOT NULL DEFAULT ''`;
       await s`CREATE TABLE IF NOT EXISTS form_submissions (
         id serial PRIMARY KEY,
         funnel_id int NOT NULL,
@@ -528,6 +531,9 @@ export const pgRepo: Repo = {
       resourceData: r.resource_data as string,
       calendlyUrl: r.calendly_url as string,
       thanksNote: (r.thanks_note as string) ?? "",
+      coverUrl: (r.cover_url as string) ?? "",
+      coverData: (r.cover_data as string) ?? "",
+      coverName: (r.cover_name as string) ?? "",
       fields: (r.fields as Funnel["fields"]) ?? [],
       active: Boolean(r.active),
       views: r.views as number,
@@ -538,10 +544,12 @@ export const pgRepo: Repo = {
     await init();
     const [row] = await sql()`INSERT INTO funnels
       (slug, kind, name, template, headline, subhead, bullets, testimonial, cta_label,
-       resource_url, resource_name, resource_data, calendly_url, thanks_note, fields, active, views, submissions)
+       resource_url, resource_name, resource_data, calendly_url, thanks_note,
+       cover_url, cover_data, cover_name, fields, active, views, submissions)
       VALUES (${d.slug}, ${d.kind ?? "funnel"}, ${d.name}, ${d.template}, ${d.headline}, ${d.subhead},
        ${sql().json(d.bullets as never)}, ${d.testimonial}, ${d.ctaLabel},
        ${d.resourceUrl}, ${d.resourceName}, ${d.resourceData}, ${d.calendlyUrl}, ${d.thanksNote ?? ""},
+       ${d.coverUrl ?? ""}, ${d.coverData ?? ""}, ${d.coverName ?? ""},
        ${sql().json(d.fields as never)}, ${d.active}, ${d.views ?? 0}, ${d.submissions ?? 0})
       RETURNING id`;
     return { ...d, id: row.id as number };
@@ -556,7 +564,9 @@ export const pgRepo: Repo = {
       headline=${v.headline}, subhead=${v.subhead}, bullets=${sql().json(v.bullets as never)},
       testimonial=${v.testimonial}, cta_label=${v.ctaLabel}, resource_url=${v.resourceUrl},
       resource_name=${v.resourceName}, resource_data=${v.resourceData},
-      calendly_url=${v.calendlyUrl}, thanks_note=${v.thanksNote ?? ""}, fields=${sql().json(v.fields as never)},
+      calendly_url=${v.calendlyUrl}, thanks_note=${v.thanksNote ?? ""},
+      cover_url=${v.coverUrl ?? ""}, cover_data=${v.coverData ?? ""}, cover_name=${v.coverName ?? ""},
+      fields=${sql().json(v.fields as never)},
       active=${v.active} WHERE id=${id}`;
   },
   async deleteFunnel(id) {

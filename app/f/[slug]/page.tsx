@@ -68,6 +68,7 @@ export default async function FunnelPage({
         brokerageName={brand.brokerageName}
         city={brand.city}
         logoUrl={logo}
+        coverSrc={funnel.coverData ? `/f/${funnel.slug}/cover` : funnel.coverUrl || undefined}
       />
     );
   }

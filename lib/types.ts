@@ -356,6 +356,9 @@ export interface Funnel {
   resourceData: string; // base64 of the uploaded file ("" = none)
   calendlyUrl: string; // embedded on the thank-you step
   thanksNote: string; // custom thank-you message (forms especially)
+  coverUrl: string; // background photo URL (forms)
+  coverData: string; // …or uploaded image, base64 ("" = none)
+  coverName: string;
   fields: FunnelField[]; // custom questions beyond name/phone/email
   active: boolean;
   views: number;

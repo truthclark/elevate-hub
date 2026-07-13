@@ -537,6 +537,16 @@ export async function saveFunnel(fd: FormData) {
     resourceName = file.name;
   }
 
+  // Optional cover photo (background image, ≤ 2.5MB) — served from /f/[slug]/cover
+  let coverName = s(fd, "coverNameKeep");
+  let coverData = "";
+  const cover = fd.get("coverFile");
+  if (cover instanceof File && cover.size > 0) {
+    if (cover.size > 2.5 * 1024 * 1024) throw new Error("Cover image must be under 2.5MB");
+    coverData = Buffer.from(await cover.arrayBuffer()).toString("base64");
+    coverName = cover.name;
+  }
+
   const kind = (s(fd, "kind") === "form" ? "form" : "funnel") as "form" | "funnel";
   const base = {
     slug,
@@ -551,6 +561,7 @@ export async function saveFunnel(fd: FormData) {
     resourceUrl: s(fd, "resourceUrl"),
     calendlyUrl: s(fd, "calendlyUrl"),
     thanksNote: s(fd, "thanksNote"),
+    coverUrl: s(fd, "coverUrl"),
     fields,
     active: s(fd, "active") !== "false",
   };
@@ -560,12 +571,18 @@ export async function saveFunnel(fd: FormData) {
       patch.resourceData = resourceData;
       patch.resourceName = resourceName;
     }
+    if (coverData) {
+      patch.coverData = coverData;
+      patch.coverName = coverName;
+    }
     await store.updateFunnel(id, patch);
   } else {
     await store.createFunnel({
       ...base,
       resourceName,
       resourceData,
+      coverName,
+      coverData,
       views: 0,
       submissions: 0,
     });

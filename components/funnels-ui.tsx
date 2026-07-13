@@ -127,6 +127,7 @@ function FunnelForm({ funnel, starter }: { funnel?: Funnel; starter?: Partial<Fu
     >
       {funnel && <input type="hidden" name="id" value={funnel.id} />}
       <input type="hidden" name="resourceNameKeep" value={funnel?.resourceName ?? ""} />
+      <input type="hidden" name="coverNameKeep" value={funnel?.coverName ?? ""} />
       <div className="grid grid-cols-2 gap-3">
         <Field label="What is this?">
           <select name="kind" value={kind} onChange={(e) => setKind(e.target.value as "funnel" | "form")} className={inputCls}>
@@ -190,6 +191,19 @@ function FunnelForm({ funnel, starter }: { funnel?: Funnel; starter?: Partial<Fu
           placeholder={"What's your price range?!: Under $200K / $200K–$250K / $250K+\n+What matters most in your next home?"}
         />
       </Field>
+      {isForm && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Cover photo (JPG/PNG, ≤2.5MB)">
+            <input name="coverFile" type="file" accept="image/*" className={cn(inputCls, "py-2")} />
+            {funnel?.coverName && (
+              <p className="mt-1 text-[11px] text-ink-faint">Current: {funnel.coverName}</p>
+            )}
+          </Field>
+          <Field label="…or photo URL">
+            <input name="coverUrl" defaultValue={f?.coverUrl} className={inputCls} placeholder="https://… (a listing photo works great)" />
+          </Field>
+        </div>
+      )}
       <Field label="Thank-you message (shown after they submit)">
         <input name="thanksNote" defaultValue={f?.thanksNote} className={inputCls} placeholder="Got it — we'll be in touch shortly." />
       </Field>
