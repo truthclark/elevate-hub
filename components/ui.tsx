@@ -256,8 +256,24 @@ export function Avatar({
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-mist py-10 text-center">
-      <p className="text-sm text-ink-faint">{message}</p>
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-mist py-9 text-center">
+      {/* little skyline illustration in brand tones */}
+      <svg width="110" height="52" viewBox="0 0 110 52" fill="none" aria-hidden className="mb-3 opacity-80">
+        {/* sun */}
+        <circle cx="88" cy="12" r="7" fill="#05c3f9" opacity="0.25" />
+        <circle cx="88" cy="12" r="4" fill="#05c3f9" opacity="0.5" />
+        {/* back buildings */}
+        <rect x="8" y="22" width="14" height="30" rx="2" fill="rgb(var(--mist))" />
+        <rect x="62" y="18" width="16" height="34" rx="2" fill="rgb(var(--mist))" />
+        {/* house */}
+        <path d="M28 30 L44 17 L60 30" stroke="#05c3f9" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <rect x="32" y="30" width="24" height="22" rx="2" fill="#05c3f9" opacity="0.14" />
+        <rect x="32" y="30" width="24" height="22" rx="2" stroke="#05c3f9" strokeWidth="2" fill="none" />
+        <rect x="40.5" y="38" width="7" height="14" rx="1.5" fill="#05c3f9" opacity="0.55" />
+        {/* ground */}
+        <line x1="2" y1="52" x2="108" y2="52" stroke="rgb(var(--ink-faint))" strokeWidth="1.5" opacity="0.35" strokeLinecap="round" />
+      </svg>
+      <p className="max-w-xs text-sm text-ink-faint">{message}</p>
     </div>
   );
 }

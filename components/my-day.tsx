@@ -30,23 +30,40 @@ const NEXT_PRIORITY: Record<string, string> = { High: "Medium", Medium: "Low", L
 
 // Smart quick-add: "call Marcus tomorrow !high" → date + priority parsed out
 const DOW = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-function parseQuickAdd(raw: string, baseIso: string): { title: string; dueIso: string; priority: string } {
+function parseQuickAdd(raw: string, baseIso: string): { title: string; dueIso: string; priority: string; dueTime: string } {
   let title = raw.trim();
   let dueIso = baseIso;
   let priority = "Medium";
+  let dueTime = "";
+  // Time: "3pm", "9:30am", "at 15:00"
+  const tm = title.match(/\s(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i) ??
+    title.match(/\s(?:at\s+)(\d{1,2}):(\d{2})\b/);
+  if (tm) {
+    let h = parseInt(tm[1]);
+    const mins = tm[2] ? parseInt(tm[2]) : 0;
+    const ap = (tm[3] ?? "").toLowerCase();
+    if (ap === "pm" && h < 12) h += 12;
+    if (ap === "am" && h === 12) h = 0;
+    if (h >= 0 && h <= 23 && mins >= 0 && mins <= 59) {
+      dueTime = `${String(h).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+      title = title.replace(tm[0], " ");
+    }
+  }
   const pri = title.match(/\s*!(high|med(?:ium)?|low)\b/i);
   if (pri) {
     priority = pri[1].toLowerCase().startsWith("h") ? "High" : pri[1].toLowerCase().startsWith("l") ? "Low" : "Medium";
     title = title.replace(pri[0], " ");
   }
   const today = dayStart(new Date());
+  const nw = title.match(/\s+\bnext week\b/i);
+  if (nw) { dueIso = isoOf(addDays(today, 7)); title = title.replace(nw[0], " "); }
   const tom = title.match(/\s+\b(tomorrow|tmr)\b/i);
   const tod = title.match(/\s+\btoday\b/i);
   if (tom) { dueIso = isoOf(addDays(today, 1)); title = title.replace(tom[0], " "); }
   else if (tod) { dueIso = isoOf(today); title = title.replace(tod[0], " "); }
   else {
     for (let i = 0; i < 7; i++) {
-      const re = new RegExp(`\\s+\\b(${DOW[i]}|${DOW[i].slice(0, 3)})\\b\\s*$`, "i");
+      const re = new RegExp(`\\s+(?:next\\s+)?\\b(${DOW[i]}|${DOW[i].slice(0, 3)})\\b\\s*$`, "i");
       const m = title.match(re);
       if (m) {
         let diff = (i - today.getDay() + 7) % 7;
@@ -57,7 +74,7 @@ function parseQuickAdd(raw: string, baseIso: string): { title: string; dueIso: s
       }
     }
   }
-  return { title: title.replace(/\s{2,}/g, " ").trim(), dueIso, priority };
+  return { title: title.replace(/\s{2,}/g, " ").trim(), dueIso, priority, dueTime };
 }
 
 function sortDay(list: TaskItem[]): TaskItem[] {
@@ -172,6 +189,7 @@ export default function MyDay({
     fd.set("dueDate", parsed.dueIso);
     fd.set("assignedTo", person);
     fd.set("priority", parsed.priority);
+    if (parsed.dueTime) fd.set("dueTime", parsed.dueTime);
     startAdd(async () => {
       await saveTask(fd);
       if (inputRef.current) inputRef.current.value = "";
@@ -282,7 +300,7 @@ export default function MyDay({
           {/* quick add */}
           <form action={(fd) => quickAdd(String(fd.get("task") ?? ""))} className="mb-4 flex items-center gap-2">
             <input ref={inputRef} name="task" autoComplete="off"
-              placeholder={`Add a task… try "call Marcus tomorrow !high"`}
+              placeholder={`Add a task… try "call Marcus tue 3pm !high"`}
               className="min-w-0 flex-1 rounded-xl border border-mist bg-chalk/60 px-3.5 py-2.5 text-sm outline-none transition focus:border-elevate-400 focus:bg-white" />
             <button type="submit" disabled={adding}
               className="flex shrink-0 items-center gap-1.5 rounded-xl bg-elevate-500 px-3.5 py-2.5 text-sm font-semibold text-ink transition hover:bg-elevate-400">

@@ -1,6 +1,10 @@
 import Topbar from "@/components/topbar";
 import { Section, StatCard } from "@/components/ui";
 import { ScorecardGrid, MeasurablesEditor, ScoreRow } from "@/components/scorecard-ui";
+import PresentMode, { PresentRow } from "@/components/present-mode";
+import { pipelineStats } from "@/lib/derive";
+import { brandOf } from "@/lib/brand";
+import { weekLabel, monthLabel } from "@/lib/scorecard";
 import { getAppData } from "@/lib/derive";
 import { store } from "@/lib/store";
 import { lastWeeks, lastMonths, autoValues, ensureProspectingRows } from "@/lib/scorecard";
@@ -66,11 +70,41 @@ export default async function ScorecardPage() {
   const lastWeekStats = onTrackOf(weeklyRows, lastWeekKey);
   const thisMonth = onTrackOf(monthlyRows, currentMonth);
 
+  // Presentation mode data (last 4 weeks / 3 months, meeting-sized)
+  const brand = brandOf(data.settings);
+  const year = data.settings.year;
+  const targets = data.settings.targets[String(year)] ?? { annual: 0, q1: 0, q2: 0, q3: 0, q4: 0 };
+  const stats = pipelineStats(data.deals.filter((d) => d.year === year), targets);
+  const w4 = weeks.slice(-4);
+  const m3 = months.slice(-3);
+  const toPresent = (rows: ScoreRow[], keys: string[]): PresentRow[] =>
+    rows.map((r) => ({
+      name: r.m.name,
+      owner: r.m.owner,
+      target: r.m.target,
+      direction: r.m.direction,
+      vals: keys.map((k) => r.values[k] ?? null),
+    }));
+  const presentData = {
+    companyName: brand.companyName,
+    weekLabels: w4.map(weekLabel),
+    weekly: toPresent(weeklyRows, w4),
+    monthLabels: m3.map(monthLabel),
+    monthly: toPresent(monthlyRows, m3),
+    onTrack: thisWeek.hit.length,
+    weeklyCount: weeklyRows.length,
+    unitsClosed: stats.unitsClosed,
+    annualTarget: targets.annual,
+    pipelineVolume: stats.pipelineVolume,
+    pipelineGci: stats.pipelineGci,
+  };
+
   return (
     <>
       <Topbar
         title="Scorecard"
         subtitle="Leading numbers, EOS style — weekly activity, monthly outcomes."
+        action={<PresentMode data={presentData} />}
       />
 
       <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">

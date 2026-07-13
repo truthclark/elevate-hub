@@ -3,9 +3,10 @@
 // Global search (Cmd-K / Ctrl-K): jump to any deal, lead, task, SOP, or page.
 // The index is built server-side in the dashboard layout and passed as props.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Search, FileSignature, Sparkles, CheckSquare, BookOpen, ArrowRight, CornerDownLeft } from "lucide-react";
+import { saveLead, saveTask } from "@/app/actions";
+import { Search, FileSignature, Sparkles, CheckSquare, BookOpen, ArrowRight, CornerDownLeft, Zap, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface SearchItem {
@@ -13,6 +14,84 @@ export interface SearchItem {
   label: string;
   sub?: string;
   href: string;
+}
+
+// ── Verbs: type to create, not just find ─────────────────────────
+// "lead Sarah Chen 210-555-1234"  → creates the lead
+// "task call lender tomorrow 9am" → creates the task
+interface Verb {
+  label: string;
+  detail: string;
+  run: () => FormData;
+  kind: "lead" | "task";
+}
+
+function parseVerb(q: string): Verb | null {
+  const leadM = q.match(/^(?:new\s+)?lead\s+(.+)/i);
+  if (leadM) {
+    let rest = leadM[1].trim();
+    const phone = rest.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)?.[0] ?? "";
+    if (phone) rest = rest.replace(phone, " ");
+    const email = rest.match(/\S+@\S+\.\S+/)?.[0] ?? "";
+    if (email) rest = rest.replace(email, " ");
+    const name = rest.replace(/\s{2,}/g, " ").trim();
+    if (!name) return null;
+    return {
+      kind: "lead",
+      label: `Create lead: ${name}`,
+      detail: [phone, email].filter(Boolean).join(" · ") || "no contact info yet",
+      run: () => {
+        const fd = new FormData();
+        fd.set("name", name);
+        fd.set("phone", phone);
+        fd.set("email", email);
+        fd.set("source", "Quick add");
+        fd.set("type", "Buyer");
+        fd.set("followUpStatus", "New — needs first call");
+        return fd;
+      },
+    };
+  }
+  const taskM = q.match(/^(?:new\s+)?task\s+(.+)/i);
+  if (taskM) {
+    let title = taskM[1].trim();
+    const p2 = (x: number) => String(x).padStart(2, "0");
+    const iso = (d: Date) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+    let due = iso(new Date());
+    let dueTime = "";
+    const tom = title.match(/\s\b(tomorrow|tmr)\b/i);
+    if (tom) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      due = iso(d);
+      title = title.replace(tom[0], " ");
+    }
+    const tm = title.match(/\s(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i);
+    if (tm) {
+      let h = parseInt(tm[1]);
+      const mins = tm[2] ? parseInt(tm[2]) : 0;
+      if (tm[3].toLowerCase() === "pm" && h < 12) h += 12;
+      if (tm[3].toLowerCase() === "am" && h === 12) h = 0;
+      dueTime = `${p2(h)}:${p2(mins)}`;
+      title = title.replace(tm[0], " ");
+    }
+    title = title.replace(/\s{2,}/g, " ").trim();
+    if (!title) return null;
+    return {
+      kind: "task",
+      label: `Create task: ${title}`,
+      detail: `due ${due}${dueTime ? ` at ${dueTime}` : ""}`,
+      run: () => {
+        const fd = new FormData();
+        fd.set("task", title);
+        fd.set("dueDate", due);
+        if (dueTime) fd.set("dueTime", dueTime);
+        fd.set("priority", "Medium");
+        return fd;
+      },
+    };
+  }
+  return null;
 }
 
 const ICONS = {
@@ -42,8 +121,10 @@ export default function CommandPalette({ items }: { items: SearchItem[] }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [sel, setSel] = useState(0);
+  const [running, startRun] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const verb = useMemo(() => parseVerb(q.trim()), [q]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -94,6 +175,18 @@ export default function CommandPalette({ items }: { items: SearchItem[] }) {
     router.push(item.href);
   };
 
+  const runVerb = () => {
+    if (!verb || running) return;
+    const fd = verb.run();
+    startRun(async () => {
+      if (verb.kind === "lead") await saveLead(fd);
+      else await saveTask(fd);
+      setOpen(false);
+      router.push(verb.kind === "lead" ? "/leads" : "/tasks");
+      router.refresh();
+    });
+  };
+
   if (!open) return null;
 
   return (
@@ -109,15 +202,38 @@ export default function CommandPalette({ items }: { items: SearchItem[] }) {
             onKeyDown={(e) => {
               if (e.key === "ArrowDown") { e.preventDefault(); setSel((s) => Math.min(s + 1, results.length - 1)); }
               if (e.key === "ArrowUp") { e.preventDefault(); setSel((s) => Math.max(s - 1, 0)); }
-              if (e.key === "Enter" && results[sel]) go(results[sel]);
+              if (e.key === "Enter") {
+                if (verb) runVerb();
+                else if (results[sel]) go(results[sel]);
+              }
             }}
-            placeholder="Search deals, leads, tasks, SOPs…"
+            placeholder={`Search — or type "lead …" / "task …" to create`}
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"
           />
           <kbd className="rounded-md border border-mist bg-chalk px-1.5 py-0.5 text-[10px] font-semibold text-ink-faint">esc</kbd>
         </div>
         <ul className="max-h-80 overflow-y-auto p-2">
-          {results.map((item, idx) => {
+          {verb && (
+            <li>
+              <button
+                onClick={runVerb}
+                disabled={running}
+                className="flex w-full items-center gap-3 rounded-xl bg-elevate-50 px-3 py-2.5 text-left text-sm"
+              >
+                {running ? (
+                  <Loader2 size={15} className="animate-spin text-elevate-600" />
+                ) : (
+                  <Zap size={15} className="text-elevate-600" />
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-ink">{verb.label}</span>
+                  <span className="block truncate text-xs text-ink-faint">{verb.detail}</span>
+                </span>
+                <CornerDownLeft size={13} className="shrink-0 text-ink-faint" />
+              </button>
+            </li>
+          )}
+          {!verb && results.map((item, idx) => {
             const Icon = ICONS[item.type];
             return (
               <li key={`${item.type}-${item.href}-${item.label}`}>
@@ -142,8 +258,10 @@ export default function CommandPalette({ items }: { items: SearchItem[] }) {
               </li>
             );
           })}
-          {results.length === 0 && (
-            <li className="px-3 py-8 text-center text-sm text-ink-faint">No matches for “{q}”.</li>
+          {!verb && results.length === 0 && (
+            <li className="px-3 py-8 text-center text-sm text-ink-faint">
+              No matches for “{q}”. Tip: type “lead Sarah 210-555-1234” or “task call lender tomorrow 9am”.
+            </li>
           )}
         </ul>
       </div>

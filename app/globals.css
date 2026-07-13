@@ -27,6 +27,20 @@ body {
   @apply bg-chalk text-ink font-body antialiased;
 }
 
+/* Universal press feedback — the whole app feels tactile */
+button:not(:disabled) {
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 150ms;
+}
+button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  button:active:not(:disabled) {
+    transform: none;
+  }
+}
+
 @layer components {
   .card {
     @apply rounded-2xl bg-white shadow-card border border-mist/60;
