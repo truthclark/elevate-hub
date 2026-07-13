@@ -52,6 +52,22 @@ export default async function ClientTimelinePage({
   const closed = isClosed(deal);
   const doneCount = timeline.filter((m) => m.done).length;
   const next = timeline.find((m) => !m.done && m.days != null && m.days >= 0);
+
+  // Plain-English explainer for whatever comes next
+  const NEXT_UP: Record<string, string> = {
+    Contract: "Your offer is signed and official — the clock starts now.",
+    "Option ends":
+      "This is your inspection window. We check everything, and you can walk away for any reason before it ends.",
+    Inspection:
+      "A licensed inspector goes through the home top to bottom. We'll review the full report together.",
+    Financing:
+      "Your lender finishes underwriting. Sending documents back quickly is the #1 way to keep this on time.",
+    Appraisal:
+      "The lender independently confirms the home's value. Totally routine — and we handle any surprises.",
+    Closing: "Signing day. Bring your photo ID, leave with your keys.",
+  };
+  const pct = timeline.length ? doneCount / timeline.length : 0;
+  const RING = 2 * Math.PI * 26; // r=26 circle circumference
   const agent =
     team.find((m) => m.name.toLowerCase() === deal.agent.toLowerCase()) ??
     team.find((m) => m.active && hasRole(m, "Agent"));
@@ -59,9 +75,20 @@ export default async function ClientTimelinePage({
 
   return (
     <main className="min-h-screen bg-chalk pb-16">
-      {/* Header */}
-      <div className="bg-ink px-5 pb-16 pt-8 text-white">
-        <div className="mx-auto max-w-xl">
+      {/* Header — property photo hero when we have one */}
+      <div className="relative overflow-hidden bg-ink px-5 pb-16 pt-8 text-white">
+        {deal.photo && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={deal.photo}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#111118]/70 via-[#111118]/55 to-[#111118]/85" />
+          </>
+        )}
+        <div className="relative mx-auto max-w-xl">
           <div className="flex items-center gap-3">
             {logo ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -99,17 +126,36 @@ export default async function ClientTimelinePage({
       <div className="mx-auto -mt-8 max-w-xl px-5">
         {/* Progress card */}
         <div className="card p-6">
-          <div className="mb-1.5 flex justify-between text-sm">
-            <span className="font-semibold">Milestones</span>
-            <span className="text-ink-muted">
-              {doneCount} of {timeline.length} complete
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-mist">
-            <div
-              className="h-full rounded-full bg-elevate-500 transition-all"
-              style={{ width: `${timeline.length ? (doneCount / timeline.length) * 100 : 0}%` }}
-            />
+          <div className="mb-2 flex items-center gap-4">
+            {/* progress ring */}
+            <div className="relative h-16 w-16 shrink-0">
+              <svg viewBox="0 0 60 60" className="h-16 w-16 -rotate-90">
+                <circle cx="30" cy="30" r="26" fill="none" stroke="rgb(var(--mist))" strokeWidth="6" />
+                <circle
+                  cx="30"
+                  cy="30"
+                  r="26"
+                  fill="none"
+                  stroke="#05c3f9"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  strokeDasharray={RING}
+                  strokeDashoffset={RING * (1 - pct)}
+                  style={{ transition: "stroke-dashoffset 1s ease-out" }}
+                />
+              </svg>
+              <span className="absolute inset-0 flex items-center justify-center font-display text-sm font-bold">
+                {Math.round(pct * 100)}%
+              </span>
+            </div>
+            <div>
+              <p className="font-display text-base font-bold">
+                {closed ? "Every milestone, done." : "Your progress"}
+              </p>
+              <p className="text-sm text-ink-muted">
+                {doneCount} of {timeline.length} milestones complete
+              </p>
+            </div>
           </div>
 
           <ol className="mt-6 space-y-0">
@@ -129,7 +175,7 @@ export default async function ClientTimelinePage({
                 >
                   {m.done ? <Check size={14} strokeWidth={3} /> : <span className="text-[10px] font-bold">{i + 1}</span>}
                 </span>
-                <div className="min-w-0 pt-0.5">
+                <div className="min-w-0 flex-1 pt-0.5">
                   <p className={`text-sm font-semibold ${m.done ? "text-ink" : "text-ink-muted"}`}>
                     {m.label}
                   </p>
@@ -141,6 +187,13 @@ export default async function ClientTimelinePage({
                       </span>
                     )}
                   </p>
+                  {/* what-happens-next explainer on the upcoming milestone */}
+                  {next && m.label === next.label && NEXT_UP[m.label] && (
+                    <p className="mt-2 rounded-xl bg-elevate-50 px-3 py-2.5 text-xs leading-relaxed text-elevate-900">
+                      <span className="font-bold">What this means: </span>
+                      {NEXT_UP[m.label]}
+                    </p>
+                  )}
                 </div>
               </li>
             ))}

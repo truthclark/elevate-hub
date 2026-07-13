@@ -5,6 +5,7 @@ import { DealModal, AddButton } from "@/components/forms";
 import ClientsTable from "@/components/clients-table";
 import ListingsTable from "@/components/listings-table";
 import TxnTable, { TxnRow } from "@/components/txn-table";
+import DealBoard from "@/components/deal-board";
 import {
   getAppData,
   dealGci,
@@ -26,6 +27,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const VIEWS = [
+  { key: "board", label: "Board" },
   { key: "active", label: "Active" },
   { key: "contract", label: "Under Contract" },
   { key: "listings", label: "Listings" },
@@ -72,7 +74,10 @@ export default async function DealsPage({
     a.href.startsWith("/deals")
   );
 
+  const boardDeals = data.deals.filter((d) => d.year === data.settings.year || !isClosed(d));
+
   const counts: Record<ViewKey, number> = {
+    board: active.length,
     active: active.length,
     contract: pendingRows.length,
     listings: listings.length,
@@ -80,6 +85,7 @@ export default async function DealsPage({
   };
 
   const subtitleBy: Record<ViewKey, string> = {
+    board: "Drag deals through the pipeline.",
     active: `${active.length} active · ${closed.length} closed this year`,
     contract: "Everything under contract or headed to the closing table.",
     listings: `${listings.length} active · ${onMarket.length} on the MLS`,
@@ -132,6 +138,8 @@ export default async function DealsPage({
           </Link>
         ))}
       </div>
+
+      {view === "board" && <DealBoard deals={boardDeals} team={data.team} />}
 
       {view === "active" && (
         <Section title="Active deals">

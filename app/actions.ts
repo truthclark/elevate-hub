@@ -64,6 +64,7 @@ function dealFromForm(fd: FormData): Omit<Deal, "id"> {
     status: s(fd, "status") || "Active",
     notes: s(fd, "notes"),
     year: n(fd, "year") ?? new Date().getFullYear(),
+    photo: s(fd, "photo"),
     // One-off fees/credits on this deal (parallel arrays from the form)
     adjustments: fd
       .getAll("adjLabel")
@@ -138,6 +139,24 @@ export async function saveDeal(fd: FormData) {
     const [settings, team] = await Promise.all([store.getSettings(), store.listTeam()]);
     const tasks = templateTasks(saved, templateId, settings.templates, team);
     if (tasks.length) await store.createTasks(tasks);
+  }
+  revalidateAll();
+}
+
+// Kanban: drag a card to a new stage
+export async function patchDealStatus(fd: FormData) {
+  const id = n(fd, "id");
+  const status = s(fd, "status");
+  if (id == null || !status) return;
+  const before = (await store.listDeals()).find((d) => d.id === id);
+  if (!before) return;
+  const patch: Partial<Deal> = { status };
+  if (status === "Closed" && !before.closedDate) {
+    patch.closedDate = new Date().toLocaleDateString("en-US");
+  }
+  await store.updateDeal(id, patch);
+  if (before.status.toLowerCase() !== "closed" && status === "Closed") {
+    await notifyClosed({ ...before, ...patch } as Deal);
   }
   revalidateAll();
 }
@@ -293,7 +312,10 @@ export async function toggleTask(fd: FormData) {
   const id = n(fd, "id");
   const done = s(fd, "done") === "true";
   if (id != null) {
-    await store.updateTask(id, { status: done ? "Done" : "Open" });
+    await store.updateTask(id, {
+      status: done ? "Done" : "Open",
+      completedAt: done ? new Date().toISOString() : "",
+    });
     // Recurring: completing spawns the next occurrence
     if (done) {
       const task = (await store.listTasks()).find((t) => t.id === id);

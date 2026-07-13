@@ -56,6 +56,8 @@ async function init() {
       await s`ALTER TABLE deals ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false`;
       await s`ALTER TABLE deals ADD COLUMN IF NOT EXISTS share_token text NOT NULL DEFAULT ''`;
       await s`ALTER TABLE deals ADD COLUMN IF NOT EXISTS adjustments jsonb NOT NULL DEFAULT '[]'`;
+      await s`ALTER TABLE deals ADD COLUMN IF NOT EXISTS photo text NOT NULL DEFAULT ''`;
+      await s`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS completed_at timestamptz`;
       await s`ALTER TABLE pnl_entries ADD COLUMN IF NOT EXISTS recurring boolean NOT NULL DEFAULT false`;
       await s`ALTER TABLE pnl_entries ADD COLUMN IF NOT EXISTS end_month text NOT NULL DEFAULT ''`;
       await s`ALTER TABLE pnl_entries ADD COLUMN IF NOT EXISTS recur_of int`;
@@ -214,6 +216,7 @@ function rowToDeal(r: Record<string, unknown>): Deal {
     notes: r.notes as string, year: r.year as number,
     archived: Boolean(r.archived),
     shareToken: (r.share_token as string) ?? "",
+    photo: (r.photo as string) ?? "",
     adjustments: (r.adjustments as { label: string; amount: number }[]) ?? [],
   };
 }
@@ -240,6 +243,7 @@ function rowToTask(r: Record<string, unknown>): TaskItem {
     sortOrder: (r.sort_order as number) ?? 0, recur: (r.recur as string) ?? "",
     anchor: (r.anchor as string) ?? "",
     offsetDays: (r.offset_days as number) ?? null,
+    completedAt: r.completed_at ? (r.completed_at as Date).toISOString() : "",
   };
 }
 
@@ -259,7 +263,7 @@ const DEAL_DEFAULTS: Omit<Deal, "id"> = {
   financingDeadline: "", appraisalDeadline: "", inspDate: "", closeDate: "",
   closedDate: "", price: null, commPct: null, referralPct: null, gci: null,
   status: "Active", notes: "", year: new Date().getFullYear(), shareToken: "",
-  adjustments: [],
+  photo: "", adjustments: [],
 };
 
 async function upsertDeal(d: Omit<Deal, "id">, id?: number): Promise<number> {
@@ -277,6 +281,7 @@ async function upsertDeal(d: Omit<Deal, "id">, id?: number): Promise<number> {
       gci=${v.gci}, status=${v.status}, notes=${v.notes}, year=${v.year},
       archived=${v.archived ?? false},
       share_token=${v.shareToken ?? ""},
+      photo=${v.photo ?? ""},
       adjustments=${s.json((v.adjustments ?? []) as never)},
       updated_at=now()
       WHERE id=${id}`;
@@ -285,12 +290,12 @@ async function upsertDeal(d: Omit<Deal, "id">, id?: number): Promise<number> {
   const [row] = await s`INSERT INTO deals
     (side, name, address, agent, source, referred_by, lender, close_goal, checklist,
      contract_date, option_deadline, financing_deadline, appraisal_deadline, insp_date,
-     close_date, closed_date, price, comm_pct, referral_pct, gci, status, notes, year, adjustments)
+     close_date, closed_date, price, comm_pct, referral_pct, gci, status, notes, year, adjustments, photo)
     VALUES (${v.side}, ${v.name}, ${v.address}, ${v.agent}, ${v.source}, ${v.referredBy},
      ${v.lender}, ${v.closeGoal}, ${s.json(v.checklist as never)}, ${v.contractDate},
      ${v.optionDeadline}, ${v.financingDeadline}, ${v.appraisalDeadline}, ${v.inspDate},
      ${v.closeDate}, ${v.closedDate}, ${v.price}, ${v.commPct}, ${v.referralPct},
-     ${v.gci}, ${v.status}, ${v.notes}, ${v.year}, ${s.json((v.adjustments ?? []) as never)})
+     ${v.gci}, ${v.status}, ${v.notes}, ${v.year}, ${s.json((v.adjustments ?? []) as never)}, ${v.photo ?? ""})
     RETURNING id`;
   return row.id as number;
 }
@@ -379,7 +384,8 @@ export const pgRepo: Repo = {
       assigned_to=${v.assignedTo}, priority=${v.priority}, related_client=${v.relatedClient},
       status=${v.status}, notes=${v.notes}, deal_id=${v.dealId},
       sort_order=${v.sortOrder ?? 0}, recur=${v.recur ?? ""},
-      anchor=${v.anchor ?? ""}, offset_days=${v.offsetDays ?? null} WHERE id=${id}`;
+      anchor=${v.anchor ?? ""}, offset_days=${v.offsetDays ?? null},
+      completed_at=${v.completedAt ? new Date(v.completedAt) : null} WHERE id=${id}`;
   },
   async deleteTask(id) {
     await init();

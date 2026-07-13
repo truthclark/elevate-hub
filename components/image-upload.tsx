@@ -72,6 +72,62 @@ export function PhotoField({ current, name }: { current?: string; name: string }
   );
 }
 
+// ── Property photo field (deal form) — wide, hero-sized ──────────
+export function PropertyPhotoField({ current, name }: { current?: string; name: string }) {
+  const [preview, setPreview] = useState(current ?? "");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div>
+      <div
+        className={cn(
+          "flex h-28 w-full items-center justify-center overflow-hidden rounded-xl border border-mist bg-chalk",
+          !preview && "text-ink-faint"
+        )}
+      >
+        {preview ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview} alt="Property preview" className="h-full w-full object-cover" />
+        ) : (
+          <span className="flex items-center gap-2 text-xs">
+            <ImagePlus size={16} /> No photo yet — listing photos look great here
+          </span>
+        )}
+      </div>
+      <input type="hidden" name={name} value={preview} />
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (f) setPreview(await fileToDataUrl(f, 1200));
+        }}
+      />
+      <div className="mt-2 flex gap-2">
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          className="rounded-lg border border-mist px-3 py-1.5 text-xs font-semibold text-ink-muted transition hover:text-ink"
+        >
+          {preview ? "Change photo" : "Upload photo"}
+        </button>
+        {preview && (
+          <button
+            type="button"
+            onClick={() => setPreview("")}
+            className="rounded-lg p-1.5 text-ink-faint hover:text-rose-500"
+            aria-label="Remove photo"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Logo uploader (Settings page) ────────────────────────────────
 export function LogoUploader({ current }: { current?: string }) {
   const [preview, setPreview] = useState(current ?? "");

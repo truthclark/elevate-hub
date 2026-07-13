@@ -15,7 +15,7 @@ import { Deal, Lead, TaskItem, TeamMember, TaskTemplate, Checklists, Side, CHECK
 import AddressInput from "./address-input";
 import ContractUpload from "./contract-upload";
 import { toInputDate } from "@/lib/utils";
-import { PhotoField } from "./image-upload";
+import { PhotoField, PropertyPhotoField } from "./image-upload";
 import { useState } from "react";
 import { Plus, Pencil, Trash2, Archive } from "lucide-react";
 import { fireConfetti } from "@/lib/confetti";
@@ -244,6 +244,9 @@ function DealFormBody({
           </Field>
         ))}
       </div>
+
+      <p className="pt-1 text-xs font-bold uppercase tracking-wide text-ink-faint">Property photo</p>
+      <PropertyPhotoField current={d?.photo} name="photo" />
 
       <p className="pt-1 text-xs font-bold uppercase tracking-wide text-ink-faint">Money</p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

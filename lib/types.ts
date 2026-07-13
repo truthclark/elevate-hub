@@ -33,6 +33,7 @@ export interface Deal {
   year: number;
   archived?: boolean; // soft-deleted; restorable from /archive
   shareToken?: string; // public client-timeline link token ("" = sharing off)
+  photo?: string; // property photo (data URL) — record page + client share hero
   // One-off money adjustments on this deal: buyer credits, one-time brokerage
   // fees, bonuses. Positive = cost (reduces team net); negative = income.
   adjustments?: { label: string; amount: number }[];
@@ -120,6 +121,7 @@ export interface TaskItem {
   dealId: number | null;
   sortOrder?: number; // manual drag order within a day (lower = higher)
   recur?: string; // "" | daily | weekdays | weekly | monthly — next occurrence spawns on complete
+  completedAt?: string; // ISO timestamp when marked done (for the deal timeline)
   // Template provenance — lets due dates re-flow when the deal's dates change
   anchor?: string; // "" | created | contract | close
   offsetDays?: number | null;
