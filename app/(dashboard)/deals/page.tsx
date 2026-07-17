@@ -20,6 +20,7 @@ import {
   FileSignature,
   CheckCircle2,
   Clock,
+  DollarSign,
   Home,
   Tag,
 } from "lucide-react";
@@ -155,7 +156,7 @@ export default async function DealsPage({
 
       {view === "contract" && (
         <>
-          <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="mb-4 grid grid-cols-2 gap-4 md:grid-cols-4">
             <StatCard label="In progress" value={String(pendingRows.length)} icon={FileSignature} tint="cyan" />
             <StatCard
               label="Pending volume"
@@ -164,20 +165,30 @@ export default async function DealsPage({
               tint="amber"
             />
             <StatCard
+              label="Pending GCI"
+              value={fmtMoney(pendingRows.reduce((s, r) => s + (r.gci ?? 0), 0), true)}
+              sub="what's coming when these close"
+              icon={DollarSign}
+              tint="green"
+            />
+            <StatCard
               label="Closed YTD"
               value={String(rows.filter((r) => r.closed).length)}
               icon={CheckCircle2}
-              tint="green"
+              tint="slate"
             />
-            <StatCard label="Alerts" value={String(alerts.length)} icon={AlertTriangle} tint="slate" />
           </div>
 
+          {/* Alerts live in a compact bubble — tap to expand */}
           {alerts.length > 0 && (
-            <Section
-              title="Needs attention"
-              className="mb-6 border-amber-200 bg-gradient-to-br from-amber-50/60 to-white"
-            >
-              <ul className="space-y-2">
+            <details className="group mb-6">
+              <summary className="inline-flex cursor-pointer list-none items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100 [&::-webkit-details-marker]:hidden">
+                <AlertTriangle size={14} />
+                {alerts.length} need{alerts.length === 1 ? "s" : ""} attention
+                <span className="text-xs font-normal text-amber-700/70 group-open:hidden">· show</span>
+                <span className="hidden text-xs font-normal text-amber-700/70 group-open:inline">· hide</span>
+              </summary>
+              <ul className="mt-3 space-y-2 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50/60 to-white p-4">
                 {alerts.map((a, i) => (
                   <li key={i} className="flex flex-wrap items-center gap-2 text-sm">
                     <AlertTriangle
@@ -189,7 +200,7 @@ export default async function DealsPage({
                   </li>
                 ))}
               </ul>
-            </Section>
+            </details>
           )}
 
           <Section title="Transaction pipeline">
