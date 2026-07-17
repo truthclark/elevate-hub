@@ -28,7 +28,7 @@ export interface Deal {
   commPct: number | null; // e.g. 3 = 3%
   referralPct: number | null;
   gci: number | null;
-  status: string; // Active, Showing, Option, Under Contract, Pending, Closed, On Hold, Lost
+  status: string; // Active, Showing, Option, Pending, Closed, On Hold, Lost
   notes: string;
   year: number;
   archived?: boolean; // soft-deleted; restorable from /archive

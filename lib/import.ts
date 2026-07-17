@@ -39,7 +39,7 @@ function buyerToDeal(row: unknown[]): Partial<Deal> {
     lender: cell(row, 10),
     inspDate: cleanDate(cell(row, 16)),
     closeDate: cleanDate(cell(row, 17)),
-    status: cell(row, 24) ? "Closed" : cell(row, 18) || (cell(row, 14) ? "Under Contract" : "Active"),
+    status: cell(row, 24) ? "Closed" : cell(row, 18) || (cell(row, 14) ? "Pending" : "Active"),
     price: parseNumber(row[19]),
     gci: parseNumber(row[20]),
     commPct: parseNumber(row[21]),

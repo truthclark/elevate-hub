@@ -11,12 +11,11 @@ import { fmtMoney, fmtDate, daysUntil, initialsOf, cn } from "@/lib/utils";
 import { Avatar, TypeBadge } from "./ui";
 import { CalendarClock, GripVertical } from "lucide-react";
 
-const STAGES = ["Active", "Showing", "Under Contract", "Option", "Pending", "Closed"] as const;
+const STAGES = ["Active", "Showing", "Option", "Pending", "Closed"] as const;
 
 const STAGE_TINT: Record<string, string> = {
   Active: "border-t-elevate-400",
   Showing: "border-t-sky-400",
-  "Under Contract": "border-t-amber-400",
   Option: "border-t-orange-400",
   Pending: "border-t-violet-400",
   Closed: "border-t-emerald-400",

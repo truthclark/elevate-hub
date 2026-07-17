@@ -92,7 +92,7 @@ function SubmitForm({
   );
 }
 
-const STATUSES = ["Active", "Showing", "Under Contract", "Option", "Pending", "Closed", "On Hold", "Lost", "Referred"];
+const STATUSES = ["Active", "Showing", "Option", "Pending", "Closed", "On Hold", "Lost", "Referred"];
 export const DEAL_STATUSES = STATUSES;
 
 // ── Deal form (shared by Modal + controlled Editor) ──────────────

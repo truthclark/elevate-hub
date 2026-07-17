@@ -181,7 +181,31 @@ export default async function DashboardPage() {
               </p>
             </div>
           </div>
-          <div className="flex gap-8">
+          <div className="flex flex-wrap gap-x-8 gap-y-4">
+            <div>
+              <p className="text-xs text-white/50">Closed volume</p>
+              <p className="font-display text-2xl font-bold text-emerald-400">
+                {fmtMoney(stats.volume.closed, true)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-white/50">Closed GCI</p>
+              <p className="font-display text-2xl font-bold text-emerald-400">
+                {fmtMoney(stats.gci.closed, true)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-white/50">Pending volume</p>
+              <p className="font-display text-2xl font-bold text-amber-400">
+                {fmtMoney(stats.volume.pending, true)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-white/50">Pending GCI</p>
+              <p className="font-display text-2xl font-bold text-amber-400">
+                {fmtMoney(stats.gci.pending, true)}
+              </p>
+            </div>
             <div>
               <p className="text-xs text-white/50">Pipeline volume</p>
               <p className="font-display text-2xl font-bold text-elevate-400">

@@ -22,7 +22,7 @@ const D = (p: Partial<Deal>): Omit<Deal, "id"> => ({
 });
 
 export const SEED_DEALS: Omit<Deal, "id">[] = [
-  D({ side: "Buyer", name: "The Hendersons", agent: "Casey Tran", lender: "Preferred Lender", closeGoal: "Aug", status: "Under Contract", price: 500000, commPct: 3, gci: 15000, source: "SOI", checklist: { highnote: "Y", jotform: "Y", consult: "Y", bra: "Y" } }),
+  D({ side: "Buyer", name: "The Hendersons", agent: "Casey Tran", lender: "Preferred Lender", closeGoal: "Aug", status: "Option", price: 500000, commPct: 3, gci: 15000, source: "SOI", checklist: { highnote: "Y", jotform: "Y", consult: "Y", bra: "Y" } }),
   D({ side: "Buyer", name: "The Okafors", agent: "Casey Tran", lender: "Preferred Lender", closeGoal: "Mar", status: "Pending", price: 560000, commPct: 2.11, gci: 11800, source: "SOI", contractDate: "6/22/2026", optionDeadline: "6/29/2026", financingDeadline: "7/10/2026", closeDate: "7/20/2026", checklist: { highnote: "Y", jotform: "Y", consult: "Y", bra: "Y", tcSetup: "Y" } }),
   D({ side: "Buyer", name: "The Delgados", agent: "Casey Tran", lender: "Builder", closeGoal: "Jul", status: "Pending", price: 473000, commPct: 5, gci: 23650, source: "SOI", contractDate: "6/15/2026", closeDate: "7/13/2026", checklist: { highnote: "Y", jotform: "Y", consult: "Y", bra: "Y" } }),
   D({ side: "Buyer", name: "The Whitfields", agent: "Casey Tran", lender: "Preferred Lender", closeGoal: "Aug", status: "Showing", checklist: { highnote: "Y", jotform: "Y", consult: "Y", bra: "Y" } }),

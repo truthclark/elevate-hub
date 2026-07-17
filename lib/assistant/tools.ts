@@ -97,7 +97,7 @@ export const TOOL_DECLARATIONS = [
         name: { type: "STRING", description: "Client name" },
         address: { type: "STRING", description: "Property address (listings)" },
         agent: { type: "STRING" },
-        status: { type: "STRING", description: "Active, Showing, Under Contract, Option, Pending, Closed" },
+        status: { type: "STRING", description: "Active, Showing, Option, Pending, Closed" },
         closeGoal: { type: "STRING", description: "Target month e.g. Aug" },
         source: { type: "STRING" },
         referredBy: { type: "STRING" },
