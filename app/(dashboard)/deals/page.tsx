@@ -6,6 +6,7 @@ import ClientsTable from "@/components/clients-table";
 import ListingsTable from "@/components/listings-table";
 import TxnTable, { TxnRow } from "@/components/txn-table";
 import DealBoard from "@/components/deal-board";
+import { MoneyBars } from "@/components/charts";
 import {
   getAppData,
   dealGci,
@@ -14,7 +15,7 @@ import {
   isPending,
   buildAlerts,
 } from "@/lib/derive";
-import { fmtMoney, cn } from "@/lib/utils";
+import { fmtMoney, parseDateSafe, cn } from "@/lib/utils";
 import {
   AlertTriangle,
   FileSignature,
@@ -39,10 +40,12 @@ type ViewKey = (typeof VIEWS)[number]["key"];
 
 const CHECK = (v?: string) => (v ?? "").toLowerCase().startsWith("y");
 
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
 export default async function DealsPage({
   searchParams,
 }: {
-  searchParams?: { view?: string };
+  searchParams?: { view?: string; year?: string };
 }) {
   const view: ViewKey = (VIEWS.some((v) => v.key === searchParams?.view)
     ? searchParams?.view
@@ -77,6 +80,29 @@ export default async function DealsPage({
 
   const boardDeals = data.deals.filter((d) => d.year === data.settings.year || !isClosed(d));
 
+  // ── Closed view: pick a year, see that year's story ─────────────
+  const closedYearOf = (d: (typeof closed)[number]) =>
+    parseDateSafe(d.closedDate || d.closeDate)?.getFullYear() ?? d.year;
+  const closedYears = Array.from(new Set(closed.map(closedYearOf))).sort((a, b) => b - a);
+  const requestedYear = parseInt(searchParams?.year ?? "");
+  const closedYear = closedYears.includes(requestedYear)
+    ? requestedYear
+    : closedYears.includes(data.settings.year)
+      ? data.settings.year
+      : (closedYears[0] ?? data.settings.year);
+  const closedInYear = closed.filter((d) => closedYearOf(d) === closedYear);
+  const closedVolume = closedInYear.reduce((s, d) => s + (d.price ?? 0), 0);
+  const closedGciTotal = closedInYear.reduce((s, d) => s + (gciBy[d.id] ?? 0), 0);
+  const monthly = MONTHS.map((month) => ({ month, closings: 0, volume: 0, gci: 0 }));
+  for (const d of closedInYear) {
+    const dt = parseDateSafe(d.closedDate || d.closeDate);
+    if (!dt) continue;
+    const m = monthly[dt.getMonth()];
+    m.closings += 1;
+    m.volume += d.price ?? 0;
+    m.gci += gciBy[d.id] ?? 0;
+  }
+
   const counts: Record<ViewKey, number> = {
     board: active.length,
     active: active.length,
@@ -90,7 +116,7 @@ export default async function DealsPage({
     active: `${active.length} active · ${closed.length} closed this year`,
     contract: "Everything under contract or headed to the closing table.",
     listings: `${listings.length} active · ${onMarket.length} on the MLS`,
-    closed: `${closed.length} closed`,
+    closed: `${closedInYear.length} closed in ${closedYear}`,
   };
 
   return (
@@ -246,16 +272,70 @@ export default async function DealsPage({
       )}
 
       {view === "closed" && (
-        <Section title="Closed deals">
-          <ClientsTable
-            deals={closed}
-            agents={agents}
-            templates={data.settings.templates}
-            checklists={data.settings.checklists}
-            gciBy={gciBy}
-            closedView
-          />
-        </Section>
+        <>
+          {/* Year filter */}
+          <div className="mb-4 flex flex-wrap items-center gap-1.5">
+            {closedYears.map((y) => (
+              <Link
+                key={y}
+                href={`/deals?view=closed&year=${y}`}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 text-xs font-semibold transition",
+                  y === closedYear
+                    ? "bg-elevate-500 text-ink"
+                    : "border border-mist bg-white text-ink-muted hover:text-ink"
+                )}
+              >
+                {y}
+              </Link>
+            ))}
+          </div>
+
+          <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-3">
+            <StatCard
+              label={`Closed in ${closedYear}`}
+              value={String(closedInYear.length)}
+              icon={CheckCircle2}
+              tint="green"
+            />
+            <StatCard
+              label="Closed volume"
+              value={fmtMoney(closedVolume, true)}
+              icon={Home}
+              tint="cyan"
+            />
+            <StatCard
+              label="Closed GCI"
+              value={fmtMoney(closedGciTotal, true)}
+              sub="gross, before split & fees"
+              icon={DollarSign}
+              tint="amber"
+            />
+          </div>
+
+          <div className="mb-6 grid gap-4 lg:grid-cols-3">
+            <Section title="Closings by month">
+              <MoneyBars data={monthly} dataKey="closings" name="Closings" />
+            </Section>
+            <Section title="Volume by month">
+              <MoneyBars data={monthly} dataKey="volume" name="Volume" color="#34d399" />
+            </Section>
+            <Section title="GCI by month">
+              <MoneyBars data={monthly} dataKey="gci" name="GCI" color="#fbbf24" />
+            </Section>
+          </div>
+
+          <Section title={`Closed deals — ${closedYear}`}>
+            <ClientsTable
+              deals={closedInYear}
+              agents={agents}
+              templates={data.settings.templates}
+              checklists={data.settings.checklists}
+              gciBy={gciBy}
+              closedView
+            />
+          </Section>
+        </>
       )}
     </>
   );
